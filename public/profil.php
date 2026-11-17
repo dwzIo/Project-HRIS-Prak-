@@ -1,5 +1,5 @@
 <?php
-include "../src/auth.php"; include "../src/layout.php"; wajib_login();
+include __DIR__ . "/../src/auth.php"; include __DIR__ . "/../src/layout.php"; wajib_login();
 $id = $_SESSION['id'];
 $boleh = array('alamat' => 'Alamat', 'no_hp' => 'Nomor HP', 'email' => 'Email', 'kontak_darurat' => 'Kontak darurat');
 $u = satu("SELECT * FROM users WHERE id=?", array($id));

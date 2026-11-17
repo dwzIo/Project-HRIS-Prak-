@@ -1,7 +1,7 @@
 <?php
 // Login & Register dalam SATU halaman (dua tampilan, berganti lewat JavaScript)
-include "../src/auth.php";
-include "../src/layout.php";
+include __DIR__ . "/../src/auth.php";
+include __DIR__ . "/../src/layout.php";
 if (isset($_SESSION['login'])) { pindah('dashboard.php'); }
 $teks_pesan = '';
 $jenis_pesan = 'gagal';
@@ -33,24 +33,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $teks_pesan = 'NIP atau password salah.';
     $jenis_pesan = 'gagal';
     $nip_isi = $nip; // NIP yang tadi diketik dikembalikan ke kolom
-  } else {
-    $tab = 'register';
-    $nip = trim(isi('nip'));
-    $nama = trim(isi('nama'));
-    $email = trim(isi('email'));
-    $password = isi('password');
-    if ($nip === '' || $nama === '' || $email === '' || $password === '') { $teks_pesan = 'Semua kolom wajib diisi.'; }
-    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $teks_pesan = 'Format email tidak valid.'; }
-    elseif (strlen($password) < 6) { $teks_pesan = 'Password minimal 6 karakter.'; }
-    elseif ($password !== isi('konfirmasi')) { $teks_pesan = 'Konfirmasi password tidak sama.'; }
-    elseif (angka("SELECT COUNT(*) FROM users WHERE nip=?", array($nip)) > 0) { $teks_pesan = 'NIP sudah terdaftar.'; }
-    else {
-      $hash = password_hash($password, PASSWORD_DEFAULT); // password disimpan sebagai hash
-      jalankan("INSERT INTO users (id,nip,nama,email,password,role) VALUES (?,?,?,?,?,'karyawan')", array(buat_id(), $nip, $nama, $email, $hash));
-      $teks_pesan = 'Akun berhasil dibuat. Silakan masuk.';
-      $jenis_pesan = 'sukses';
-      $tab = 'login';
-    }
+  // } else {
+  //   $tab = 'register';
+  //   $nip = trim(isi('nip'));
+  //   $nama = trim(isi('nama'));
+  //   $email = trim(isi('email'));
+  //   $password = isi('password');
+  //   if ($nip === '' || $nama === '' || $email === '' || $password === '') { $teks_pesan = 'Semua kolom wajib diisi.'; }
+  //   elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $teks_pesan = 'Format email tidak valid.'; }
+  //   elseif (strlen($password) < 6) { $teks_pesan = 'Password minimal 6 karakter.'; }
+  //   elseif ($password !== isi('konfirmasi')) { $teks_pesan = 'Konfirmasi password tidak sama.'; }
+  //   elseif (angka("SELECT COUNT(*) FROM users WHERE nip=?", array($nip)) > 0) { $teks_pesan = 'NIP sudah terdaftar.'; }
+  //   else {
+  //     $hash = password_hash($password, PASSWORD_DEFAULT); // password disimpan sebagai hash
+  //     jalankan("INSERT INTO users (id,nip,nama,email,password,role) VALUES (?,?,?,?,?,'karyawan')", array(buat_id(), $nip, $nama, $email, $hash));
+  //     $teks_pesan = 'Akun berhasil dibuat. Silakan masuk.';
+  //     $jenis_pesan = 'sukses';
+  //     $tab = 'login';
+  //   }
   }
 }
 // Cookie (DINONAKTIFKAN): $nip_isi = isset($_COOKIE['nip_terakhir']) ? $_COOKIE['nip_terakhir'] : '';
@@ -106,10 +106,10 @@ if ($tab === 'register') { $sembunyi_login = 'hidden'; $sembunyi_daftar = ''; }
           <button class="h-11 w-full rounded-full bg-teal-700 text-sm font-semibold text-white hover:bg-teal-800">Masuk</button>
         </form>
         <p class="mt-4 text-center text-sm"><a href="lupa_password.php" class="font-medium text-stone-700 hover:underline">Lupa password? (khusus karyawan)</a></p>
-        <button type="button" data-tab="register" class="mt-10 h-11 w-full rounded-full border border-teal-700 text-sm font-semibold text-teal-700 hover:bg-teal-50">Buat akun baru</button>
+        <!-- <button type="button" data-tab="register" class="mt-10 h-11 w-full rounded-full border border-teal-700 text-sm font-semibold text-teal-700 hover:bg-teal-50">Buat akun baru</button> -->
       </div>
 
-      <div id="form-register" class="<?= $sembunyi_daftar ?>">
+      <!-- <div id="form-register" class="<?= $sembunyi_daftar ?>">
         <h1 class="mb-4 text-lg font-semibold">Buat akun karyawan</h1>
         <form method="POST" data-validasi novalidate>
           <input type="hidden" name="aksi" value="register">
@@ -122,9 +122,9 @@ if ($tab === 'register') { $sembunyi_login = 'hidden'; $sembunyi_daftar = ''; }
         </form>
         <button type="button" data-tab="login" class="mt-6 h-11 w-full rounded-full border border-teal-700 text-sm font-semibold text-teal-700 hover:bg-teal-50">Sudah punya akun? Masuk</button>
       </div>
-    </div>
+    </div> -->
   </section>
 
-  <script src="../assets/app.js"></script>
+  <script src="assets/app.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <?php
-include "../src/auth.php"; include "../src/layout.php"; wajib_admin();
+include __DIR__ . "/../src/auth.php"; include __DIR__ . "/../src/layout.php"; wajib_admin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (isi('aksi') === 'hapus') {

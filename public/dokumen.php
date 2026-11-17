@@ -1,5 +1,5 @@
 <?php
-include "../src/auth.php"; include "../src/layout.php"; wajib_login();
+include __DIR__ . "/../src/auth.php"; include __DIR__ . "/../src/layout.php"; wajib_login();
 $id = $_SESSION['id'];
 $jenis_dok = array('KTP', 'Kartu Keluarga', 'NPWP', 'Ijazah', 'Sertifikat', 'BPJS', 'Kontrak kerja');
 

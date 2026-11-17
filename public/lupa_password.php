@@ -2,8 +2,8 @@
 // Lupa password - KHUSUS KARYAWAN, dengan persetujuan admin:
 // 1) karyawan mengajukan (NIP + email)  2) admin menyetujui / menolak di menu Pengajuan
 // 3) setelah disetujui, karyawan membuka halaman status ini lagi dan mengisi password baru.
-include "../src/auth.php";
-include "../src/layout.php";
+include __DIR__ . "/../src/auth.php";
+include __DIR__ . "/../src/layout.php";
 if (isset($_SESSION['login'])) { pindah('dashboard.php'); }
 
 $kode = '';
@@ -125,6 +125,6 @@ if ($kode !== '') {
 
     <p class="mt-6 text-center text-sm"><a href="login.php" class="font-medium text-stone-700 hover:underline">Kembali ke halaman masuk</a></p>
   </div>
-  <script src="../assets/app.js"></script>
+  <script src="assets/app.js"></script>
 </body>
 </html>

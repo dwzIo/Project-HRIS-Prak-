@@ -1,8 +1,8 @@
 <?php
 // Di-include paling atas setiap halaman (session_start harus di baris awal)
 session_start();
-include_once "koneksi.php";
-define('FOLDER_UPLOAD', __DIR__ . '/uploads'); // lokasi asli folder upload di server
+include_once __DIR__ . "/koneksi.php";
+define('FOLDER_UPLOAD', __DIR__ . '/../uploads'); // lokasi asli folder upload di server
 
 // ---------- fungsi bantu umum ----------
 function e($teks) { return htmlspecialchars((string)$teks, ENT_QUOTES, 'UTF-8'); }

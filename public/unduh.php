@@ -4,7 +4,7 @@
 //         unduh.php?jenis=surat&id=ABC123&unduh=1    -> diunduh
 ini_set('display_errors', '0');          // peringatan PHP tidak boleh ikut masuk ke data gambar
 ini_set('zlib.output_compression', 'Off');
-include "../src/auth.php";
+include __DIR__ . "/../src/auth.php";
 wajib_login();
 
 function tidak_ada($teks) { http_response_code(404); echo $teks; exit; }
