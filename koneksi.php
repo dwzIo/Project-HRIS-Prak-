@@ -11,3 +11,4 @@ if ($baru) {
   $st = $konek->prepare("INSERT INTO users (nip,nama,email,password,role) VALUES ('admin','Admin HR','hr@perusahaan.test',?,'admin')");
   $st->execute([password_hash("admin123", PASSWORD_DEFAULT)]);
 }
+$test = 0;
