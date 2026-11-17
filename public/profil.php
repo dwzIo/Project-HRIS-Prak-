@@ -163,7 +163,7 @@ top('Profil saya');
       </div>
     <?php else: ?>
       <p class="mb-4 text-sm text-stone-500">Isi field yang ingin diubah (bisa beberapa sekaligus dalam satu kali pengajuan). Kosongkan field yang tidak ingin diubah.</p>
-      <form method="POST" enctype="multipart/form-data" data-validasi novalidate>
+      <form method="POST" enctype="multipart/form-data" data-konfirmasi="Apakah Anda yakin ingin mengajukan perubahan data ini? Setelah disetujui, Anda tidak dapat mengubah data kembali selama 90 hari." novalidate>
         <input type="hidden" name="aksi" value="ubah">
         <?php foreach ($boleh as $kolom => $label): ?>
           <div class="mb-3">
