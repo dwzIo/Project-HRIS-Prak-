@@ -2,7 +2,7 @@
 include __DIR__ . "/../src/auth.php";
 include __DIR__ . "/../src/layout.php";
 wajib_admin();
-$boleh = array('alamat' => 'Alamat', 'no_hp' => 'Nomor HP', 'email' => 'Email', 'kontak_darurat' => 'Kontak darurat');
+$boleh = array('alamat' => 'Alamat', 'no_hp' => 'Nomor HP', 'email' => 'Email');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $aksi = isi('aksi');
@@ -89,10 +89,15 @@ $resets = daftar("SELECT r.*, u.nip, u.nama FROM password_resets r JOIN users u 
 
 top('Pengajuan karyawan');
 ?>
+
+<!-- Permintaan reset password -->
 <?php kartu_awal('Permintaan reset password'); ?>
-<p class="-mt-2 mb-4 text-sm text-stone-500">Karyawan baru bisa mengganti passwordnya setelah permintaan disetujui di sini.</p>
-<?php if (count($resets) == 0): kosong('Tidak ada permintaan reset password.');
-else: tabel_awal(array('Karyawan', 'Diminta', 'Status', 'Keputusan')); ?>
+<p class="keterangan -mt-2 mb-4 text-sm">Karyawan baru bisa mengganti passwordnya setelah permintaan disetujui di sini.</p>
+
+<?php if (count($resets) == 0): ?>
+  <?php kosong('Tidak ada permintaan reset password.'); ?>
+<?php else: ?>
+  <?php tabel_awal(array('Karyawan', 'Diminta', 'Status', 'Keputusan')); ?>
   <?php foreach ($resets as $r):
     $statusTampil = $r['status'];
     if (($r['status'] === 'Menunggu' || $r['status'] === 'Disetujui') && $r['expires_at'] < time()) {
@@ -100,63 +105,87 @@ else: tabel_awal(array('Karyawan', 'Diminta', 'Status', 'Keputusan')); ?>
     }
   ?>
     <tr>
-      <td data-label="Karyawan"><?= e($r['nama']) ?><br class="max-md:hidden"><span class="text-xs text-stone-500 max-md:ml-2"><?= e($r['nip']) ?></span></td>
+      <td data-label="Karyawan">
+        <?= e($r['nama']) ?><br class="max-md:hidden"><span class="keterangan max-md:ml-2"><?= e($r['nip']) ?></span>
+      </td>
       <td data-label="Diminta"><?= e(date('d M Y H:i', $r['created_at'])) ?></td>
       <td data-label="Status"><?= lencana($statusTampil) ?></td>
       <td data-label="Keputusan">
         <?php if ($statusTampil === 'Menunggu'): ?>
-          <form method="POST" class="flex flex-wrap items-center gap-1">
-            <input type="hidden" name="aksi" value="reset"><input type="hidden" name="id" value="<?= e($r['id']) ?>">
+          <form method="POST" class="flex flex-wrap items-center gap-1.5">
+            <input type="hidden" name="aksi" value="reset">
+            <input type="hidden" name="id" value="<?= e($r['id']) ?>">
             <input name="catatan" placeholder="Catatan" class="kolom w-32 py-1">
             <button name="keputusan" value="Disetujui" class="btn btn-utama btn-kecil">Setujui</button>
             <button name="keputusan" value="Ditolak" class="btn btn-bahaya btn-kecil">Tolak</button>
           </form>
-        <?php else: ?><span class="text-xs text-stone-500"><?= e($r['catatan']) ?></span><?php endif; ?>
+        <?php else: ?>
+          <span class="keterangan"><?= e($r['catatan']) ?></span>
+        <?php endif; ?>
       </td>
     </tr>
-<?php endforeach;
-  tabel_akhir();
-endif; ?>
+  <?php endforeach; ?>
+  <?php tabel_akhir(); ?>
+<?php endif; ?>
 <?php kartu_akhir(); ?>
 
+
+<!-- Perubahan data pribadi -->
 <?php kartu_awal('Perubahan data pribadi'); ?>
-<?php if (count($perubahan) == 0): kosong('Tidak ada pengajuan.');
-else: tabel_awal(array('Karyawan', 'Waktu', 'Data', 'Lama', 'Baru', 'Bukti', 'Keputusan')); ?>
-  <?php foreach ($perubahan as $r): ?>
+
+<?php if (count($perubahan) == 0): ?>
+  <?php kosong('Tidak ada pengajuan.'); ?>
+<?php else: ?>
+  <?php tabel_awal(array('Karyawan', 'Waktu', 'Data', 'Lama', 'Baru', 'Bukti', 'Keputusan')); ?>
+  <?php foreach ($perubahan as $r):
+    $nama_data = isset($boleh[$r['field']]) ? $boleh[$r['field']] : $r['field'];
+  ?>
     <tr>
-      <td data-label="Karyawan"><?= e($r['nama']) ?><br class="max-md:hidden"><span class="text-xs text-stone-500 max-md:ml-2"><?= e($r['nip']) ?></span></td>
+      <td data-label="Karyawan">
+        <?= e($r['nama']) ?><br class="max-md:hidden"><span class="keterangan max-md:ml-2"><?= e($r['nip']) ?></span>
+      </td>
       <td data-label="Waktu"><?= tgl($r['created_at']) ?></td>
-      <td data-label="Data"><?= $boleh[$r['field']] ?></td>
+      <td data-label="Data"><?= e($nama_data) ?></td>
       <td data-label="Lama"><?= e($r['nilai_lama']) ?: '-' ?></td>
       <td data-label="Baru"><?= e($r['nilai_baru']) ?></td>
       <td data-label="Bukti">
-        <?php if ($r['bukti']):
-          $ext_b = strtolower(pathinfo($r['bukti'], PATHINFO_EXTENSION));
-        ?>
-          <button type="button" onclick="lihatDokumen('unduh.php?jenis=bukti&id=<?= e($r['id']) ?>', 'Bukti: <?= e($r['nama']) ?> - <?= e($boleh[$r['field']]) ?>', '<?= $ext_b ?>')" class="text-teal-700 underline font-semibold cursor-pointer">
-            Lihat
-          </button>
-          <?php else: ?>-<?php endif; ?>
+        <?php if ($r['bukti']): ?>
+          <button type="button" data-lihat
+            data-url="unduh.php?jenis=bukti&id=<?= e($r['id']) ?>"
+            data-judul="Bukti: <?= e($r['nama']) ?> - <?= e($nama_data) ?>"
+            data-ekstensi="<?= e(strtolower(pathinfo($r['bukti'], PATHINFO_EXTENSION))) ?>"
+            class="tautan">Lihat</button>
+        <?php else: ?>
+          -
+        <?php endif; ?>
       </td>
       <td data-label="Keputusan">
         <?php if ($r['status'] === 'Menunggu'): ?>
-          <form method="POST" class="flex flex-wrap items-center gap-1">
-            <input type="hidden" name="aksi" value="data"><input type="hidden" name="id" value="<?= $r['id'] ?>">
+          <form method="POST" class="flex flex-wrap items-center gap-1.5">
+            <input type="hidden" name="aksi" value="data">
+            <input type="hidden" name="id" value="<?= e($r['id']) ?>">
             <input name="catatan" placeholder="Catatan" class="kolom w-32 py-1">
             <button name="keputusan" value="Disetujui" class="btn btn-utama btn-kecil" title="Menyetujui perubahan ini dan perubahan lain di waktu yang sama">Setujui</button>
             <button name="keputusan" value="Ditolak" class="btn btn-bahaya btn-kecil">Tolak</button>
           </form>
-          <?php else: ?><?= lencana($r['status']) ?> <span class="text-xs text-stone-500"><?= e($r['catatan']) ?></span><?php endif; ?>
+        <?php else: ?>
+          <?= lencana($r['status']) ?> <span class="keterangan"><?= e($r['catatan']) ?></span>
+        <?php endif; ?>
       </td>
     </tr>
-<?php endforeach;
-  tabel_akhir();
-endif; ?>
+  <?php endforeach; ?>
+  <?php tabel_akhir(); ?>
+<?php endif; ?>
 <?php kartu_akhir(); ?>
 
+
+<!-- Permintaan surat -->
 <?php kartu_awal('Permintaan surat'); ?>
-<?php if (count($surat) == 0): kosong('Tidak ada permintaan surat.');
-else: tabel_awal(array('Karyawan', 'Surat', 'Keperluan', 'Status', 'Proses')); ?>
+
+<?php if (count($surat) == 0): ?>
+  <?php kosong('Tidak ada permintaan surat.'); ?>
+<?php else: ?>
+  <?php tabel_awal(array('Karyawan', 'Surat', 'Keperluan', 'Status', 'Proses')); ?>
   <?php foreach ($surat as $r): ?>
     <tr>
       <td data-label="Karyawan"><?= e($r['nama']) ?></td>
@@ -164,8 +193,9 @@ else: tabel_awal(array('Karyawan', 'Surat', 'Keperluan', 'Status', 'Proses')); ?
       <td data-label="Keperluan"><?= e($r['keperluan']) ?></td>
       <td data-label="Status"><?= lencana($r['status']) ?></td>
       <td data-label="Proses">
-        <form method="POST" enctype="multipart/form-data" class="flex flex-wrap items-center gap-1">
-          <input type="hidden" name="aksi" value="surat"><input type="hidden" name="id" value="<?= $r['id'] ?>">
+        <form method="POST" enctype="multipart/form-data" class="flex flex-wrap items-center gap-1.5">
+          <input type="hidden" name="aksi" value="surat">
+          <input type="hidden" name="id" value="<?= e($r['id']) ?>">
           <select name="status" class="kolom w-28 py-1">
             <?php foreach (array('Diproses', 'Selesai', 'Ditolak') as $s): ?>
               <option <?= $s === $r['status'] ? 'selected' : '' ?>><?= $s ?></option>
@@ -176,135 +206,68 @@ else: tabel_awal(array('Karyawan', 'Surat', 'Keperluan', 'Status', 'Proses')); ?
         </form>
       </td>
     </tr>
-<?php endforeach;
-  tabel_akhir();
-endif; ?>
+  <?php endforeach; ?>
+  <?php tabel_akhir(); ?>
+<?php endif; ?>
 <?php kartu_akhir(); ?>
 
+
+<!-- Verifikasi dokumen -->
 <?php kartu_awal('Verifikasi dokumen'); ?>
-<?php if (count($dokumen) == 0): kosong('Belum ada dokumen yang diunggah.');
-else: tabel_awal(array('Karyawan', 'Dokumen', 'Status', '')); ?>
-  <?php foreach ($dokumen as $r):
-    $ext_d = strtolower(pathinfo($r['file'], PATHINFO_EXTENSION));
-  ?>
+
+<?php if (count($dokumen) == 0): ?>
+  <?php kosong('Belum ada dokumen yang diunggah.'); ?>
+<?php else: ?>
+  <?php tabel_awal(array('Karyawan', 'Dokumen', 'Status', '')); ?>
+  <?php foreach ($dokumen as $r): ?>
     <tr>
       <td data-label="Karyawan"><?= e($r['nama']) ?></td>
       <td data-label="Dokumen">
-        <button type="button" onclick="lihatDokumen('unduh.php?jenis=dokumen&id=<?= e($r['id']) ?>', 'Dokumen: <?= e($r['jenis']) ?> (<?= e($r['nama']) ?>)', '<?= $ext_d ?>')" class="inline-flex items-center gap-1.5 text-teal-700 underline font-semibold cursor-pointer hover:text-teal-900">
-          <?= ikon('dokumen') ?>
+        <button type="button" data-lihat
+          data-url="unduh.php?jenis=dokumen&id=<?= e($r['id']) ?>"
+          data-judul="Dokumen: <?= e($r['jenis']) ?> (<?= e($r['nama']) ?>)"
+          data-ekstensi="<?= e(strtolower(pathinfo($r['file'], PATHINFO_EXTENSION))) ?>"
+          class="tautan inline-flex items-center gap-1.5">
+          <?= ikon('dokumen', 'h-4 w-4') ?>
           <span><?= e($r['jenis']) ?></span>
         </button>
       </td>
       <td data-label="Status"><?= lencana($r['status']) ?></td>
       <td data-label="">
-        <form method="POST" class="flex gap-1">
-          <input type="hidden" name="aksi" value="dokumen"><input type="hidden" name="id" value="<?= $r['id'] ?>">
+        <form method="POST" class="flex gap-1.5">
+          <input type="hidden" name="aksi" value="dokumen">
+          <input type="hidden" name="id" value="<?= e($r['id']) ?>">
           <button name="status" value="Terverifikasi" class="btn btn-utama btn-kecil">Verifikasi</button>
           <button name="status" value="Perlu Diperbarui" class="btn btn-bahaya btn-kecil">Perlu diperbarui</button>
         </form>
       </td>
     </tr>
-<?php endforeach;
-  tabel_akhir();
-endif; ?>
+  <?php endforeach; ?>
+  <?php tabel_akhir(); ?>
+<?php endif; ?>
 <?php kartu_akhir(); ?>
 
-<!-- Modal Preview Dokumen dengan Tombol Silang (X) -->
-<div id="modal-preview" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm p-4 flex items-center justify-center transition-opacity" role="dialog" aria-modal="true">
-  <div class="relative w-full max-w-3xl rounded-xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
-    <!-- Header Modal -->
-    <div class="flex items-center justify-between border-b border-stone-200 px-5 py-3.5 bg-stone-50">
-      <div class="flex items-center gap-2">
-        <span class="text-teal-700"><?= ikon('dokumen') ?></span>
-        <h3 id="modal-judul" class="text-sm font-bold text-stone-800 truncate max-w-lg">Preview Dokumen</h3>
-      </div>
-      <!-- Tombol Silang (X) untuk kembali / menutup -->
-      <button type="button" onclick="tutupModal()" class="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-200 hover:text-stone-700 transition" title="Tutup (Esc)">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
 
-    <!-- Area Isi Dokumen (Gambar / PDF) -->
-    <div id="modal-isi" class="p-4 overflow-auto flex items-center justify-center bg-stone-100 min-h-[350px]">
-      <!-- Gambar / iframe dimuat secara dinamis -->
-    </div>
+<!-- Jendela pratinjau berkas (dikendalikan assets/app.js) -->
+<div id="modal-preview" class="fixed inset-0 z-50 hidden items-center justify-center bg-stone-900/60 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-judul">
+  <div class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-stone-200 bg-white">
 
-    <!-- Footer Modal -->
-    <div class="flex items-center justify-between border-t border-stone-200 px-5 py-3 bg-white">
-      <a id="modal-unduh" href="#" download class="btn btn-garis btn-kecil flex items-center gap-1.5 text-xs font-semibold">
+    <div class="flex items-center justify-between gap-3 border-b border-stone-200 bg-stone-50 px-5 py-3">
+      <div class="flex min-w-0 items-center gap-2 text-stone-600">
         <?= ikon('dokumen') ?>
-        <span>Unduh Dokumen Asli</span>
-      </a>
-      <button type="button" onclick="tutupModal()" class="btn btn-utama btn-kecil px-4 text-xs font-semibold">
-        Tutup Tampilan
-      </button>
+        <h3 id="modal-judul" class="truncate text-sm font-semibold text-stone-800">Pratinjau dokumen</h3>
+      </div>
+      <button type="button" data-tutup-pratinjau title="Tutup (Esc)" aria-label="Tutup" class="rounded-md p-1.5 text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"><?= ikon('tutup') ?></button>
     </div>
+
+    <div id="modal-isi" class="flex min-h-[350px] items-center justify-center overflow-auto bg-stone-100 p-4"></div>
+
+    <div class="flex items-center justify-between gap-3 border-t border-stone-200 bg-white px-5 py-3">
+      <a id="modal-unduh" href="#" download class="btn btn-garis btn-kecil gap-1.5"><?= ikon('dokumen', 'h-4 w-4') ?><span>Unduh berkas asli</span></a>
+      <button type="button" data-tutup-pratinjau class="btn btn-utama btn-kecil">Tutup</button>
+    </div>
+
   </div>
 </div>
-
-<script>
-  function lihatDokumen(url, judul, ekstensi) {
-    document.getElementById('modal-judul').textContent = judul || 'Preview Dokumen';
-    document.getElementById('modal-unduh').href = url + '&unduh=1';
-
-    const container = document.getElementById('modal-isi');
-    container.innerHTML = '<p class="text-xs text-stone-400">Memuat berkas...</p>';
-
-    ekstensi = (ekstensi || '').toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ekstensi)) {
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = judul;
-      img.className = 'max-h-[70vh] max-w-full rounded object-contain shadow-md mx-auto';
-      img.onload = function() {
-        container.innerHTML = '';
-        container.appendChild(img);
-      };
-      img.onerror = function() {
-        container.innerHTML = '<p class="text-xs text-danger-700 font-medium">Gagal memuat gambar atau format tidak didukung.</p>';
-      };
-    } else if (ekstensi === 'pdf') {
-      const iframe = document.createElement('iframe');
-      iframe.src = url;
-      iframe.className = 'w-full h-[70vh] rounded border border-stone-200 bg-white shadow-inner';
-      container.innerHTML = '';
-      container.appendChild(iframe);
-    } else {
-      container.innerHTML = `
-      <div class="text-center py-8">
-        <p class="text-sm font-semibold text-stone-700 mb-1">Pratinjau langsung tidak tersedia</p>
-        <p class="text-xs text-stone-500 mb-4">Format berkas .${ekstensi} dapat dibuka setelah diunduh.</p>
-        <a href="${url}&unduh=1" class="btn btn-utama btn-kecil inline-flex items-center gap-1">
-          Unduh File (${ekstensi.toUpperCase()})
-        </a>
-      </div>
-    `;
-    }
-
-    document.getElementById('modal-preview').classList.remove('hidden');
-  }
-
-  function tutupModal() {
-    const modal = document.getElementById('modal-preview');
-    modal.classList.add('hidden');
-    document.getElementById('modal-isi').innerHTML = '';
-  }
-
-  // Tutup dengan tombol Escape di keyboard
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      tutupModal();
-    }
-  });
-
-  // Tutup jika klik area latar belakang (luar kotak modal)
-  document.getElementById('modal-preview').addEventListener('click', function(e) {
-    if (e.target === this) {
-      tutupModal();
-    }
-  });
-</script>
 
 <?php bottom(); ?>

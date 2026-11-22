@@ -80,54 +80,47 @@ if ($admin) {
 top('Selamat Datang, ' . $_SESSION['nama']);
 ?>
 
-<!-- Ringkasan Angka / Status -->
+<!-- Ringkasan angka dan status -->
 <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 <?= $admin ? 'xl:grid-cols-6' : 'xl:grid-cols-4' ?>">
   <?php foreach ($ringkasan as $r): ?>
-    <a href="<?= $r[2] ?>" class="kartu flex flex-col transition hover:border-teal-400 hover:shadow-sm">
-      <p class="text-xs font-medium text-stone-500 uppercase tracking-wider"><?= $r[0] ?></p>
-      <p class="mt-auto pt-2 text-2xl font-bold text-stone-900"><?= $r[1] ?></p>
-    </a>
+    <?php kartu_angka($r[0], $r[1], 'text-stone-900', 'kartu', $r[2]); ?>
   <?php endforeach; ?>
 </div>
 
 <?php if (!$admin && !$absen_hari_ini): ?>
-  <!-- Banner Aksi Cepat Absensi untuk Karyawan -->
-  <div class="mb-6 rounded-xl border border-teal-200 bg-teal-50 p-4 text-teal-900 flex flex-wrap items-center justify-between gap-4">
+  <!-- Pengingat absensi masuk untuk karyawan -->
+  <div class="notif notif-netral mb-6 flex flex-wrap items-center justify-between gap-4">
     <div>
-      <h3 class="font-semibold text-sm">Anda belum melakukan absensi masuk hari ini</h3>
-      <p class="text-xs text-teal-700">Waktu saat ini: <?= tgl($hari_ini) ?>. Catat kehadiran Anda untuk memulai jam kerja.</p>
+      <h3 class="text-sm font-semibold text-stone-900">Anda belum melakukan absensi masuk hari ini</h3>
+      <p class="keterangan mt-0.5">Tanggal hari ini: <?= tgl($hari_ini) ?>. Catat kehadiran Anda untuk memulai jam kerja.</p>
     </div>
-    <a href="absensi.php" class="btn btn-utama btn-kecil font-semibold shadow-sm">
-      Buka Menu Absensi →
-    </a>
+    <a href="absensi.php" class="btn btn-utama btn-kecil">Buka halaman absensi</a>
   </div>
 <?php endif; ?>
 
 <div class="grid gap-6 lg:grid-cols-2">
-  <!-- Kolom Kiri: Permohonan Cuti -->
+
+  <!-- Kiri: permohonan cuti -->
   <div>
     <?php kartu_awal($admin ? 'Permohonan Cuti Perlu Disetujui' : 'Pengajuan Cuti Terkini'); ?>
+
     <?php if (count($cuti_terbaru) === 0): ?>
       <?php kosong($admin ? 'Tidak ada permohonan cuti yang menunggu persetujuan.' : 'Belum ada pengajuan cuti.'); ?>
     <?php else: ?>
       <?php tabel_awal(array($admin ? 'Karyawan' : 'Jenis Cuti', 'Durasi', 'Status', '')); ?>
       <?php foreach ($cuti_terbaru as $c): ?>
         <tr>
-          <td data-label="Informasi">
+          <td data-label="<?= $admin ? 'Karyawan' : 'Jenis Cuti' ?>">
             <?php if ($admin): ?>
               <span class="font-medium text-stone-800"><?= e($c['nama']) ?></span>
-              <br><span class="text-xs text-stone-400"><?= e($c['jenis_cuti']) ?></span>
+              <br><span class="keterangan"><?= e($c['jenis_cuti']) ?></span>
             <?php else: ?>
               <span class="font-medium text-stone-800"><?= e($c['jenis_cuti']) ?></span>
-              <br><span class="text-xs text-stone-400"><?= tgl($c['created_at']) ?></span>
+              <br><span class="keterangan"><?= tgl($c['created_at']) ?></span>
             <?php endif; ?>
           </td>
-          <td data-label="Durasi" class="text-xs font-semibold text-stone-700">
-            <?= (int)$c['jumlah_hari'] ?> Hari
-          </td>
-          <td data-label="Status">
-            <?= lencana($c['status']) ?>
-          </td>
+          <td data-label="Durasi" class="text-xs font-medium text-stone-700"><?= (int)$c['jumlah_hari'] ?> Hari</td>
+          <td data-label="Status"><?= lencana($c['status']) ?></td>
           <td data-label="" class="text-right">
             <a href="<?= $admin ? 'admin_cuti.php' : 'cuti.php' ?>" class="btn btn-garis btn-kecil">Detail</a>
           </td>
@@ -135,12 +128,14 @@ top('Selamat Datang, ' . $_SESSION['nama']);
       <?php endforeach; ?>
       <?php tabel_akhir(); ?>
     <?php endif; ?>
+
     <?php kartu_akhir(); ?>
   </div>
 
-  <!-- Kolom Kanan: Permintaan Surat -->
+  <!-- Kanan: permintaan surat -->
   <div>
     <?php kartu_awal($admin ? 'Permintaan Surat Keterangan Terbaru' : 'Permintaan Surat Saya'); ?>
+
     <?php if (count($surat_terbaru) === 0): ?>
       <?php kosong('Belum ada permintaan surat.'); ?>
     <?php else: ?>
@@ -155,8 +150,10 @@ top('Selamat Datang, ' . $_SESSION['nama']);
       <?php endforeach; ?>
       <?php tabel_akhir(); ?>
     <?php endif; ?>
+
     <?php kartu_akhir(); ?>
   </div>
+
 </div>
 
 <?php bottom(); ?>

@@ -37,8 +37,47 @@ function pindah($url)
 function wajib_login()
 {
   if (!isset($_SESSION['login'])) {
-    pindah('login.php');
+    pindah('login.php'); // halaman pilih peran (admin / karyawan)
   }
+}
+
+// Alamat halaman login sesuai peran: admin dan karyawan punya halaman login sendiri
+function url_login(string $peran = ''): string
+{
+  if ($peran === 'admin') {
+    return 'login_admin.php';
+  }
+  if ($peran === 'karyawan') {
+    return 'login_karyawan.php';
+  }
+  return 'login.php';
+}
+
+// Memproses formulir login untuk SATU peran saja ('admin' atau 'karyawan').
+// Mengembalikan teks error, atau teks KOSONG jika sudah berhasil (lalu langsung pindah ke dashboard).
+function proses_login(string $peran_halaman): string
+{
+  $nip = trim(isi('nip'));
+  $user = satu("SELECT * FROM users WHERE nip=?", array($nip));
+
+  if (!$user || !password_verify(isi('password'), $user['password'])) {
+    return 'NIP atau password salah.';
+  }
+  // Password benar, tetapi akunnya milik peran lain: arahkan ke halaman yang tepat
+  if ($user['role'] !== $peran_halaman) {
+    if ($peran_halaman === 'admin') {
+      return 'Akun ini bukan akun admin. Silakan masuk lewat halaman login karyawan.';
+    }
+    return 'Akun ini adalah akun admin. Silakan masuk lewat halaman login admin.';
+  }
+
+  session_regenerate_id(true);
+  $_SESSION['login'] = true;
+  $_SESSION['id'] = $user['id'];
+  $_SESSION['nama'] = $user['nama'];
+  $_SESSION['role'] = $user['role'];
+  pindah('dashboard.php');
+  return ''; // tidak pernah tercapai: pindah() sudah menghentikan skrip
 }
 // Peran dibaca dari database (bukan dari session) agar perubahan peran langsung berlaku
 function peran_sekarang()
@@ -66,14 +105,18 @@ function nama_peran($role)
 }
 function wajib_admin()
 {
-  wajib_login();
+  if (!isset($_SESSION['login'])) {
+    pindah(url_login('admin'));
+  }
   if (!adalah_admin()) {
     pindah('dashboard.php');
   }
 }
 function wajib_karyawan()
 {
-  wajib_login();
+  if (!isset($_SESSION['login'])) {
+    pindah(url_login('karyawan'));
+  }
   if (adalah_admin()) {
     pindah('dashboard.php');
   }
@@ -279,26 +322,29 @@ function upload($nama, $folder, $ekstensi, $maks_mb)
   return array($nama_baru, null);
 }
 
-// Label status berwarna (mendukung status dasar, absensi, cuti, dan payroll)
+// Label status berwarna (mendukung status dasar, absensi, cuti, dan payroll).
+// Kelas warna (lencana-*) didefinisikan di src/layout.php.
 function lencana($status)
 {
-  $warna = 'bg-stone-100 text-stone-700';
+  $jenis = 'netral';
+
   if (in_array($status, array('Menunggu', 'Terlambat', 'Draft'))) {
-    $warna = 'bg-amber-100 text-amber-800';
+    $jenis = 'peringatan';
   }
   if (in_array($status, array('Diproses', 'Izin', 'Diterbitkan'))) {
-    $warna = 'bg-sky-100 text-sky-800';
+    $jenis = 'info';
   }
   if ($status === 'Sakit') {
-    $warna = 'bg-purple-100 text-purple-800';
+    $jenis = 'sekunder';
   }
   if (in_array($status, array('Disetujui', 'Selesai', 'Terverifikasi', 'Hadir', 'Dibayar', 'Aktif'))) {
-    $warna = 'bg-emerald-100 text-emerald-800';
+    $jenis = 'sukses';
   }
   if (in_array($status, array('Ditolak', 'Perlu Diperbarui', 'Alfa', 'Kedaluwarsa'))) {
-    $warna = 'bg-danger-100 text-danger-800';
+    $jenis = 'bahaya';
   }
-  return '<span class="inline-block rounded px-2 py-0.5 text-xs font-medium ' . $warna . '">' . e($status) . '</span>';
+
+  return '<span class="lencana lencana-' . $jenis . '">' . e($status) . '</span>';
 }
 
 // Jika data kiriman melebihi post_max_size, PHP mengosongkan $_POST dan $_FILES

@@ -3,7 +3,7 @@ include __DIR__ . "/../src/auth.php";
 include __DIR__ . "/../src/layout.php";
 wajib_login();
 $id = $_SESSION['id'];
-$boleh = array('alamat' => 'Alamat', 'no_hp' => 'Nomor HP', 'email' => 'Email', 'kontak_darurat' => 'Kontak darurat');
+$boleh = array('alamat' => 'Alamat', 'no_hp' => 'Nomor HP', 'email' => 'Email');
 $u = satu("SELECT * FROM users WHERE id=?", array($id));
 
 // 1. Cek Cooldown 90 hari setelah status Disetujui
@@ -85,9 +85,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $riwayat = daftar("SELECT * FROM change_requests WHERE user_id=? ORDER BY created_at DESC, rowid DESC", array($id));
+
 top('Profil saya');
 ?>
 <div class="grid gap-5 lg:grid-cols-5">
+
+  <!-- Kiri: identitas, foto, dan password -->
   <div class="lg:col-span-2">
     <section class="kartu mb-5">
       <div class="mb-4 flex items-center gap-4">
@@ -97,6 +100,7 @@ top('Profil saya');
           <p class="text-sm text-stone-500">NIP <?= e($u['nip']) ?></p>
         </div>
       </div>
+
       <dl class="mb-4 space-y-2 text-sm">
         <?php foreach ($boleh as $k => $label): ?>
           <div class="flex justify-between gap-4">
@@ -105,9 +109,11 @@ top('Profil saya');
           </div>
         <?php endforeach; ?>
       </dl>
+
       <form method="POST" enctype="multipart/form-data">
         <input type="hidden" name="aksi" value="foto">
-        <div class="mb-3"><label class="label">Ganti foto</label>
+        <div class="mb-3">
+          <label class="label">Ganti foto</label>
           <input type="file" id="input-foto" name="foto" accept="image/*" class="kolom" required>
         </div>
         <img id="pratinjau" alt="Pratinjau" class="mb-3 hidden h-20 w-20 rounded-full object-cover">
@@ -126,16 +132,20 @@ top('Profil saya');
     <?php kartu_akhir(); ?>
   </div>
 
+  <!-- Kanan: pengajuan perubahan data dan riwayatnya -->
   <div class="lg:col-span-3">
     <?php kartu_awal('Ajukan perubahan data'); ?>
+
     <?php if ($sisa_hari > 0): ?>
-      <p class="text-sm text-amber-700">⏳ Perubahan data Anda baru saja disetujui. Anda baru dapat mengajukan perubahan lagi dalam <b><?= $sisa_hari ?> hari</b>.</p>
+      <p class="notif notif-peringatan">Perubahan data Anda baru saja disetujui. Anda baru dapat mengajukan perubahan lagi dalam <b><?= $sisa_hari ?> hari</b>.</p>
+
     <?php elseif ($cek_menunggu): ?>
-      <p class="text-sm text-sky-700">⏳ Anda masih memiliki pengajuan yang berstatus <b>Menunggu</b>. Harap tunggu konfirmasi HR.</p>
+      <p class="notif notif-info">Anda masih memiliki pengajuan yang berstatus <b>Menunggu</b>. Harap tunggu konfirmasi HR.</p>
+
     <?php else: ?>
       <form method="POST" enctype="multipart/form-data" onsubmit="return confirm('Apakah Anda yakin ingin mengajukan perubahan data ini? Setelah disetujui, data tidak dapat diubah selama 90 hari.');">
         <input type="hidden" name="aksi" value="ubah">
-        <p class="mb-3 text-xs text-stone-500">Isi data yang ingin diubah saja (bisa lebih dari satu sekaligus), kosongkan jika tidak ingin diubah.</p>
+        <p class="keterangan mb-3">Isi data yang ingin diubah saja (bisa lebih dari satu sekaligus), kosongkan jika tidak ingin diubah.</p>
 
         <?php foreach ($boleh as $kolom => $label): ?>
           <div class="mb-3">
@@ -148,34 +158,40 @@ top('Profil saya');
           <label class="label">Bukti pendukung (opsional)</label>
           <input type="file" name="bukti" accept=".jpg,.jpeg,.png,.pdf" class="kolom">
         </div>
+
         <button class="btn btn-utama">Kirim pengajuan</button>
       </form>
     <?php endif; ?>
+
     <?php kartu_akhir(); ?>
 
     <?php kartu_awal('Riwayat pengajuan'); ?>
-    <?php if (count($riwayat) == 0): kosong('Belum ada pengajuan.');
-    else: tabel_awal(array('Tanggal', 'Data', 'Lama', 'Baru', 'Status', 'Catatan')); ?>
+    <?php if (count($riwayat) == 0): ?>
+      <?php kosong('Belum ada pengajuan.'); ?>
+    <?php else: ?>
+      <?php tabel_awal(array('Tanggal', 'Data', 'Lama', 'Baru', 'Status', 'Catatan')); ?>
       <?php foreach ($riwayat as $r): ?>
         <tr>
           <td data-label="Tanggal"><?= tgl($r['created_at']) ?></td>
-          <td data-label="Data"><?= $boleh[$r['field']] ?></td>
+          <td data-label="Data"><?= isset($boleh[$r['field']]) ? $boleh[$r['field']] : e($r['field']) ?></td>
           <td data-label="Lama"><?= e($r['nilai_lama']) ?: '-' ?></td>
           <td data-label="Baru"><?= e($r['nilai_baru']) ?></td>
           <td data-label="Status"><?= lencana($r['status']) ?></td>
           <td data-label="Catatan"><?= e($r['catatan']) ?></td>
         </tr>
-    <?php endforeach;
-      tabel_akhir();
-    endif; ?>
+      <?php endforeach; ?>
+      <?php tabel_akhir(); ?>
+    <?php endif; ?>
     <?php kartu_akhir(); ?>
   </div>
+
 </div>
 
+<!-- Jendela potong foto profil (dikendalikan assets/app.js) -->
 <div id="modal-crop" class="fixed inset-0 z-50 hidden items-center justify-center bg-stone-900/60 p-4">
-  <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-    <h3 class="mb-1 text-base font-semibold">Atur foto profil</h3>
-    <canvas id="kanvas-crop" width="288" height="288" class="mx-auto mb-3 block max-w-full rounded-lg bg-stone-100"></canvas>
+  <div class="w-full max-w-sm rounded-lg border border-stone-200 bg-white p-5">
+    <h3 class="mb-3 text-base font-semibold">Atur foto profil</h3>
+    <canvas id="kanvas-crop" width="288" height="288" class="mx-auto mb-3 block max-w-full rounded-md bg-stone-100"></canvas>
     <input type="range" id="zoom-crop" min="1" max="3" step="0.01" value="1" class="mb-4 w-full">
     <div class="flex justify-end gap-2">
       <button type="button" id="crop-batal" class="btn btn-garis">Batal</button>
@@ -183,4 +199,5 @@ top('Profil saya');
     </div>
   </div>
 </div>
+
 <?php bottom(); ?>

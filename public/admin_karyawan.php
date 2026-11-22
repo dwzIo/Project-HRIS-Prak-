@@ -110,7 +110,7 @@ if ($edit) {
 
 // Departemen untuk dropdown
 $depts = daftar("SELECT * FROM departments ORDER BY nama");
-$opsi_dept = array('' => '-- Tanpa Departemen --');
+$opsi_dept = array('' => 'Tanpa departemen');
 foreach ($depts as $d) {
   $opsi_dept[$d['id']] = $d['nama'];
 }
@@ -130,10 +130,13 @@ if (!$edit) {
 top('Data Karyawan');
 ?>
 <div class="grid gap-6 lg:grid-cols-3">
+
+  <!-- Formulir tambah / ubah akun -->
   <div>
     <?php kartu_awal($edit ? 'Ubah Data Akun' : 'Tambah Karyawan / Admin'); ?>
     <form method="POST" data-validasi novalidate>
       <input type="hidden" name="id" value="<?= e($nilai['id']) ?>">
+
       <?php isian('NIP (angka saja)', 'nip', 'text', $nilai['nip'], 'required data-angka inputmode="numeric" autocomplete="off"'); ?>
       <?php isian('Nama Lengkap', 'nama', 'text', $nilai['nama'], 'required'); ?>
       <?php isian('Email Kantor / Pribadi', 'email', 'email', $nilai['email'], 'required'); ?>
@@ -154,14 +157,19 @@ top('Data Karyawan');
 
       <div class="flex gap-2">
         <button class="btn btn-utama flex-1 sm:flex-none">Simpan</button>
-        <?php if ($edit): ?><a href="admin_karyawan.php" class="btn btn-garis flex-1 sm:flex-none">Batal</a><?php endif; ?>
+        <?php if ($edit): ?>
+          <a href="admin_karyawan.php" class="btn btn-garis flex-1 sm:flex-none">Batal</a>
+        <?php endif; ?>
       </div>
     </form>
     <?php kartu_akhir(); ?>
   </div>
+
+  <!-- Daftar akun -->
   <div class="lg:col-span-2">
     <?php kartu_awal('Daftar Akun Pengguna'); ?>
     <input id="cari" class="kolom mb-3 text-xs" placeholder="Cari nama, NIP, atau departemen...">
+
     <?php tabel_awal(array('Karyawan', 'Departemen & Jabatan', 'Peran', 'Aksi'), 'tabel-cari'); ?>
     <?php foreach ($semua as $r):
       $boleh_hapus = (alasan_tidak_boleh_hapus($r) === '');
@@ -170,9 +178,10 @@ top('Data Karyawan');
         <td data-label="Karyawan">
           <div class="flex items-center gap-3">
             <?= avatar($r, 'h-9 w-9', 'text-sm') ?>
-            <div>
-              <span class="font-semibold text-stone-900"><?= e($r['nama']) ?></span>
-              <br><span class="text-xs text-stone-500">NIP: <?= e($r['nip']) ?> • <?= e($r['email']) ?></span>
+            <div class="text-left">
+              <span class="font-medium text-stone-900"><?= e($r['nama']) ?></span>
+              <span class="keterangan block">NIP: <?= e($r['nip']) ?></span>
+              <span class="keterangan block"><?= e($r['email']) ?></span>
             </div>
           </div>
         </td>
@@ -181,12 +190,10 @@ top('Data Karyawan');
           <br><span class="text-stone-500"><?= e($r['jabatan'] ?: 'Staf') ?></span>
         </td>
         <td data-label="Peran">
-          <span class="inline-block rounded px-2 py-0.5 text-xs font-semibold <?= $r['role'] === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-stone-100 text-stone-700' ?>">
-            <?= e(nama_peran($r['role'])) ?>
-          </span>
+          <span class="lencana <?= $r['role'] === 'admin' ? 'lencana-info' : 'lencana-netral' ?>"><?= e(nama_peran($r['role'])) ?></span>
         </td>
         <td data-label="Aksi" class="whitespace-nowrap">
-          <div class="flex gap-1">
+          <div class="flex gap-1.5">
             <a href="?edit=<?= e($r['id']) ?>" class="btn btn-garis btn-kecil">Ubah</a>
             <?php if ($boleh_hapus): ?>
               <form method="POST" data-konfirmasi="Hapus akun ini beserta seluruh datanya?">
@@ -202,5 +209,7 @@ top('Data Karyawan');
     <?php tabel_akhir(); ?>
     <?php kartu_akhir(); ?>
   </div>
+
 </div>
+
 <?php bottom(); ?>
