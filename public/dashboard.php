@@ -1,41 +1,162 @@
 <?php
-include __DIR__ . "/../src/auth.php"; include __DIR__ . "/../src/layout.php"; wajib_login();
+include __DIR__ . "/../src/auth.php";
+include __DIR__ . "/../src/layout.php";
+wajib_login();
+
+// Pastikan sinkronisasi Alfa otomatis berjalan
+sinkron_alfa_otomatis();
+
 $id = $_SESSION['id'];
 $admin = adalah_admin();
+$hari_ini = date('Y-m-d');
+$waktu_sekarang = date('H:i:s');
 
 if ($admin) {
+  // Data Portal Admin
+  $total_karyawan = angka("SELECT COUNT(*) FROM users WHERE role='karyawan'");
+  $total_dept = angka("SELECT COUNT(*) FROM departments");
+  $hadir_hari_ini = angka("SELECT COUNT(*) FROM attendances WHERE tanggal=? AND status IN ('Hadir','Terlambat')", array($hari_ini));
+  $cuti_menunggu = angka("SELECT COUNT(*) FROM leave_requests WHERE status='Menunggu'");
+  $surat_menunggu = angka("SELECT COUNT(*) FROM letter_requests WHERE status IN ('Menunggu','Diproses')");
+  $data_menunggu = angka("SELECT COUNT(*) FROM change_requests WHERE status='Menunggu'");
+
   $ringkasan = array(
-    array('Total karyawan', angka("SELECT COUNT(*) FROM users WHERE role='karyawan'")),
-    array('Perubahan data menunggu', angka("SELECT COUNT(*) FROM change_requests WHERE status='Menunggu'")),
-    array('Surat perlu diproses', angka("SELECT COUNT(*) FROM letter_requests WHERE status IN ('Menunggu','Diproses')")),
-    array('Dokumen belum diverifikasi', angka("SELECT COUNT(*) FROM documents WHERE status='Menunggu'")),
-    array('Reset password menunggu', angka("SELECT COUNT(*) FROM password_resets WHERE status='Menunggu' AND expires_at>?", array(time())))
+    array('Total Karyawan', $total_karyawan, 'admin_karyawan.php'),
+    array('Departemen', $total_dept, 'admin_departemen.php'),
+    array('Hadir Hari Ini', $hadir_hari_ini, 'admin_absensi.php'),
+    array('Cuti Perlu Disetujui', $cuti_menunggu, 'admin_cuti.php'),
+    array('Surat Perlu Diproses', $surat_menunggu, 'admin_pengajuan.php'),
+    array('Pengajuan Data', $data_menunggu, 'admin_pengajuan.php')
   );
-  $surat = daftar("SELECT l.jenis, l.status, l.created_at, u.nama FROM letter_requests l JOIN users u ON u.id=l.user_id ORDER BY l.created_at DESC, l.rowid DESC LIMIT 5");
+
+  // Permohonan cuti terbaru menunggu tindakan
+  $cuti_terbaru = daftar("
+    SELECT l.*, u.nama, u.nip 
+    FROM leave_requests l 
+    JOIN users u ON u.id = l.user_id 
+    WHERE l.status='Menunggu' 
+    ORDER BY l.created_at DESC 
+    LIMIT 5
+  ");
+
+  // Permintaan surat terbaru
+  $surat_terbaru = daftar("
+    SELECT l.id, l.jenis, l.status, l.created_at, u.nama 
+    FROM letter_requests l 
+    JOIN users u ON u.id = l.user_id 
+    ORDER BY l.created_at DESC 
+    LIMIT 5
+  ");
 } else {
+  // Data Portal Karyawan
+  $absen_hari_ini = satu("SELECT * FROM attendances WHERE user_id=? AND tanggal=?", array($id, $hari_ini));
+
+  // Cuti tahunan
+  $tahun_ini = date('Y');
+  $cuti_terpakai = angka("SELECT COALESCE(SUM(jumlah_hari),0) FROM leave_requests WHERE user_id=? AND status='Disetujui' AND jenis_cuti='Cuti Tahunan' AND strftime('%Y', tanggal_mulai)=?", array($id, $tahun_ini));
+  $sisa_cuti = max(0, 12 - $cuti_terpakai);
+
+  // Slip gaji terakhir
+  $slip_terakhir = satu("SELECT * FROM payrolls WHERE user_id=? AND status IN ('Diterbitkan','Dibayar') ORDER BY periode_tahun DESC, periode_bulan DESC LIMIT 1", array($id));
+
+  // Pengajuan dalam proses
+  $pengajuan_cuti_menunggu = angka("SELECT COUNT(*) FROM leave_requests WHERE user_id=? AND status='Menunggu'", array($id));
+  $pengajuan_surat_menunggu = angka("SELECT COUNT(*) FROM letter_requests WHERE user_id=? AND status IN ('Menunggu','Diproses')", array($id));
+  $pengajuan_data_menunggu = angka("SELECT COUNT(*) FROM change_requests WHERE user_id=? AND status='Menunggu'", array($id));
+  $total_pengajuan_menunggu = $pengajuan_cuti_menunggu + $pengajuan_surat_menunggu + $pengajuan_data_menunggu;
+
   $ringkasan = array(
-    array('Pengajuan data menunggu', angka("SELECT COUNT(*) FROM change_requests WHERE user_id=? AND status='Menunggu'", array($id))),
-    array('Surat sudah selesai', angka("SELECT COUNT(*) FROM letter_requests WHERE user_id=? AND status='Selesai'", array($id))),
-    array('Dokumen tersimpan', angka("SELECT COUNT(*) FROM documents WHERE user_id=?", array($id)))
+    array('Status Absensi Hari Ini', $absen_hari_ini ? $absen_hari_ini['status'] : 'Belum Absen', 'absensi.php'),
+    array('Sisa Cuti Tahunan', $sisa_cuti . ' Hari', 'cuti.php'),
+    array('Slip Gaji Terakhir', $slip_terakhir ? rupiah($slip_terakhir['total_gaji']) : 'Belum Terbit', 'slip_gaji.php'),
+    array('Pengajuan Menunggu', $total_pengajuan_menunggu, 'surat.php')
   );
-  $surat = daftar("SELECT l.jenis, l.status, l.created_at, u.nama FROM letter_requests l JOIN users u ON u.id=l.user_id WHERE l.user_id=? ORDER BY l.created_at DESC, l.rowid DESC LIMIT 5", array($id));
+
+  // Riwayat cuti & surat terbaru milik sendiri
+  $cuti_terbaru = daftar("SELECT * FROM leave_requests WHERE user_id=? ORDER BY created_at DESC LIMIT 5", array($id));
+  $surat_terbaru = daftar("SELECT l.id, l.jenis, l.status, l.created_at, u.nama FROM letter_requests l JOIN users u ON u.id=l.user_id WHERE l.user_id=? ORDER BY l.created_at DESC LIMIT 5", array($id));
 }
-top('Halo, ' . $_SESSION['nama']);
+
+top('Selamat Datang, ' . $_SESSION['nama']);
 ?>
-<div class="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+
+<!-- Ringkasan Angka / Status -->
+<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 <?= $admin ? 'xl:grid-cols-6' : 'xl:grid-cols-4' ?>">
   <?php foreach ($ringkasan as $r): ?>
-    <!-- Kartu sama tinggi; angka selalu menempel di bawah sehingga sejajar walau label 1 atau 2 baris -->
-    <div class="kartu flex flex-col">
-      <p class="text-sm text-stone-500"><?= $r[0] ?></p>
-      <p class="mt-auto pt-1 text-3xl font-semibold"><?= $r[1] ?></p>
-    </div>
+    <a href="<?= $r[2] ?>" class="kartu flex flex-col transition hover:border-teal-400 hover:shadow-sm">
+      <p class="text-xs font-medium text-stone-500 uppercase tracking-wider"><?= $r[0] ?></p>
+      <p class="mt-auto pt-2 text-2xl font-bold text-stone-900"><?= $r[1] ?></p>
+    </a>
   <?php endforeach; ?>
 </div>
 
-<?php kartu_awal('Permintaan surat terbaru'); ?>
-<?php if (count($surat) == 0): kosong('Belum ada permintaan surat.'); else: tabel_awal(array('Surat', 'Pemohon', 'Status', 'Tanggal')); ?>
-  <?php foreach ($surat as $s): ?>
-    <tr><td data-label="Surat"><?= e($s['jenis']) ?></td><td data-label="Pemohon"><?= e($s['nama']) ?></td><td data-label="Status"><?= lencana($s['status']) ?></td><td data-label="Tanggal"><?= tgl($s['created_at']) ?></td></tr>
-  <?php endforeach; tabel_akhir(); endif; ?>
-<?php kartu_akhir(); ?>
+<?php if (!$admin && !$absen_hari_ini): ?>
+  <!-- Banner Aksi Cepat Absensi untuk Karyawan -->
+  <div class="mb-6 rounded-xl border border-teal-200 bg-teal-50 p-4 text-teal-900 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h3 class="font-semibold text-sm">Anda belum melakukan absensi masuk hari ini</h3>
+      <p class="text-xs text-teal-700">Waktu saat ini: <?= tgl($hari_ini) ?>. Catat kehadiran Anda untuk memulai jam kerja.</p>
+    </div>
+    <a href="absensi.php" class="btn btn-utama btn-kecil font-semibold shadow-sm">
+      Buka Menu Absensi →
+    </a>
+  </div>
+<?php endif; ?>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <!-- Kolom Kiri: Permohonan Cuti -->
+  <div>
+    <?php kartu_awal($admin ? 'Permohonan Cuti Perlu Disetujui' : 'Pengajuan Cuti Terkini'); ?>
+    <?php if (count($cuti_terbaru) === 0): ?>
+      <?php kosong($admin ? 'Tidak ada permohonan cuti yang menunggu persetujuan.' : 'Belum ada pengajuan cuti.'); ?>
+    <?php else: ?>
+      <?php tabel_awal(array($admin ? 'Karyawan' : 'Jenis Cuti', 'Durasi', 'Status', '')); ?>
+      <?php foreach ($cuti_terbaru as $c): ?>
+        <tr>
+          <td data-label="Informasi">
+            <?php if ($admin): ?>
+              <span class="font-medium text-stone-800"><?= e($c['nama']) ?></span>
+              <br><span class="text-xs text-stone-400"><?= e($c['jenis_cuti']) ?></span>
+            <?php else: ?>
+              <span class="font-medium text-stone-800"><?= e($c['jenis_cuti']) ?></span>
+              <br><span class="text-xs text-stone-400"><?= tgl($c['created_at']) ?></span>
+            <?php endif; ?>
+          </td>
+          <td data-label="Durasi" class="text-xs font-semibold text-stone-700">
+            <?= (int)$c['jumlah_hari'] ?> Hari
+          </td>
+          <td data-label="Status">
+            <?= lencana($c['status']) ?>
+          </td>
+          <td data-label="" class="text-right">
+            <a href="<?= $admin ? 'admin_cuti.php' : 'cuti.php' ?>" class="btn btn-garis btn-kecil">Detail</a>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+      <?php tabel_akhir(); ?>
+    <?php endif; ?>
+    <?php kartu_akhir(); ?>
+  </div>
+
+  <!-- Kolom Kanan: Permintaan Surat -->
+  <div>
+    <?php kartu_awal($admin ? 'Permintaan Surat Keterangan Terbaru' : 'Permintaan Surat Saya'); ?>
+    <?php if (count($surat_terbaru) === 0): ?>
+      <?php kosong('Belum ada permintaan surat.'); ?>
+    <?php else: ?>
+      <?php tabel_awal(array('Surat', 'Pemohon', 'Status', 'Tanggal')); ?>
+      <?php foreach ($surat_terbaru as $s): ?>
+        <tr>
+          <td data-label="Surat" class="font-medium text-stone-800"><?= e($s['jenis']) ?></td>
+          <td data-label="Pemohon" class="text-xs text-stone-600"><?= e($s['nama']) ?></td>
+          <td data-label="Status"><?= lencana($s['status']) ?></td>
+          <td data-label="Tanggal" class="text-xs text-stone-500"><?= tgl($s['created_at']) ?></td>
+        </tr>
+      <?php endforeach; ?>
+      <?php tabel_akhir(); ?>
+    <?php endif; ?>
+    <?php kartu_akhir(); ?>
+  </div>
+</div>
+
 <?php bottom(); ?>

@@ -129,7 +129,15 @@ else: tabel_awal(array('Karyawan', 'Waktu', 'Data', 'Lama', 'Baru', 'Bukti', 'Ke
       <td data-label="Data"><?= $boleh[$r['field']] ?></td>
       <td data-label="Lama"><?= e($r['nilai_lama']) ?: '-' ?></td>
       <td data-label="Baru"><?= e($r['nilai_baru']) ?></td>
-      <td data-label="Bukti"><?php if ($r['bukti']): ?><a class="text-teal-700 underline" href="unduh.php?jenis=bukti&id=<?= e($r['id']) ?>" target="_blank">Lihat</a><?php else: ?>-<?php endif; ?></td>
+      <td data-label="Bukti">
+        <?php if ($r['bukti']):
+          $ext_b = strtolower(pathinfo($r['bukti'], PATHINFO_EXTENSION));
+        ?>
+          <button type="button" onclick="lihatDokumen('unduh.php?jenis=bukti&id=<?= e($r['id']) ?>', 'Bukti: <?= e($r['nama']) ?> - <?= e($boleh[$r['field']]) ?>', '<?= $ext_b ?>')" class="text-teal-700 underline font-semibold cursor-pointer">
+            Lihat
+          </button>
+          <?php else: ?>-<?php endif; ?>
+      </td>
       <td data-label="Keputusan">
         <?php if ($r['status'] === 'Menunggu'): ?>
           <form method="POST" class="flex flex-wrap items-center gap-1">
@@ -176,10 +184,17 @@ endif; ?>
 <?php kartu_awal('Verifikasi dokumen'); ?>
 <?php if (count($dokumen) == 0): kosong('Belum ada dokumen yang diunggah.');
 else: tabel_awal(array('Karyawan', 'Dokumen', 'Status', '')); ?>
-  <?php foreach ($dokumen as $r): ?>
+  <?php foreach ($dokumen as $r):
+    $ext_d = strtolower(pathinfo($r['file'], PATHINFO_EXTENSION));
+  ?>
     <tr>
       <td data-label="Karyawan"><?= e($r['nama']) ?></td>
-      <td data-label="Dokumen"><a class="text-teal-700 underline" href="unduh.php?jenis=dokumen&id=<?= e($r['id']) ?>" target="_blank"><?= e($r['jenis']) ?></a></td>
+      <td data-label="Dokumen">
+        <button type="button" onclick="lihatDokumen('unduh.php?jenis=dokumen&id=<?= e($r['id']) ?>', 'Dokumen: <?= e($r['jenis']) ?> (<?= e($r['nama']) ?>)', '<?= $ext_d ?>')" class="inline-flex items-center gap-1.5 text-teal-700 underline font-semibold cursor-pointer hover:text-teal-900">
+          <?= ikon('dokumen') ?>
+          <span><?= e($r['jenis']) ?></span>
+        </button>
+      </td>
       <td data-label="Status"><?= lencana($r['status']) ?></td>
       <td data-label="">
         <form method="POST" class="flex gap-1">
@@ -193,4 +208,103 @@ else: tabel_awal(array('Karyawan', 'Dokumen', 'Status', '')); ?>
   tabel_akhir();
 endif; ?>
 <?php kartu_akhir(); ?>
+
+<!-- Modal Preview Dokumen dengan Tombol Silang (X) -->
+<div id="modal-preview" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm p-4 flex items-center justify-center transition-opacity" role="dialog" aria-modal="true">
+  <div class="relative w-full max-w-3xl rounded-xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+    <!-- Header Modal -->
+    <div class="flex items-center justify-between border-b border-stone-200 px-5 py-3.5 bg-stone-50">
+      <div class="flex items-center gap-2">
+        <span class="text-teal-700"><?= ikon('dokumen') ?></span>
+        <h3 id="modal-judul" class="text-sm font-bold text-stone-800 truncate max-w-lg">Preview Dokumen</h3>
+      </div>
+      <!-- Tombol Silang (X) untuk kembali / menutup -->
+      <button type="button" onclick="tutupModal()" class="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-200 hover:text-stone-700 transition" title="Tutup (Esc)">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Area Isi Dokumen (Gambar / PDF) -->
+    <div id="modal-isi" class="p-4 overflow-auto flex items-center justify-center bg-stone-100 min-h-[350px]">
+      <!-- Gambar / iframe dimuat secara dinamis -->
+    </div>
+
+    <!-- Footer Modal -->
+    <div class="flex items-center justify-between border-t border-stone-200 px-5 py-3 bg-white">
+      <a id="modal-unduh" href="#" download class="btn btn-garis btn-kecil flex items-center gap-1.5 text-xs font-semibold">
+        <?= ikon('dokumen') ?>
+        <span>Unduh Dokumen Asli</span>
+      </a>
+      <button type="button" onclick="tutupModal()" class="btn btn-utama btn-kecil px-4 text-xs font-semibold">
+        Tutup Tampilan
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function lihatDokumen(url, judul, ekstensi) {
+    document.getElementById('modal-judul').textContent = judul || 'Preview Dokumen';
+    document.getElementById('modal-unduh').href = url + '&unduh=1';
+
+    const container = document.getElementById('modal-isi');
+    container.innerHTML = '<p class="text-xs text-stone-400">Memuat berkas...</p>';
+
+    ekstensi = (ekstensi || '').toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ekstensi)) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = judul;
+      img.className = 'max-h-[70vh] max-w-full rounded object-contain shadow-md mx-auto';
+      img.onload = function() {
+        container.innerHTML = '';
+        container.appendChild(img);
+      };
+      img.onerror = function() {
+        container.innerHTML = '<p class="text-xs text-danger-700 font-medium">Gagal memuat gambar atau format tidak didukung.</p>';
+      };
+    } else if (ekstensi === 'pdf') {
+      const iframe = document.createElement('iframe');
+      iframe.src = url;
+      iframe.className = 'w-full h-[70vh] rounded border border-stone-200 bg-white shadow-inner';
+      container.innerHTML = '';
+      container.appendChild(iframe);
+    } else {
+      container.innerHTML = `
+      <div class="text-center py-8">
+        <p class="text-sm font-semibold text-stone-700 mb-1">Pratinjau langsung tidak tersedia</p>
+        <p class="text-xs text-stone-500 mb-4">Format berkas .${ekstensi} dapat dibuka setelah diunduh.</p>
+        <a href="${url}&unduh=1" class="btn btn-utama btn-kecil inline-flex items-center gap-1">
+          Unduh File (${ekstensi.toUpperCase()})
+        </a>
+      </div>
+    `;
+    }
+
+    document.getElementById('modal-preview').classList.remove('hidden');
+  }
+
+  function tutupModal() {
+    const modal = document.getElementById('modal-preview');
+    modal.classList.add('hidden');
+    document.getElementById('modal-isi').innerHTML = '';
+  }
+
+  // Tutup dengan tombol Escape di keyboard
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      tutupModal();
+    }
+  });
+
+  // Tutup jika klik area latar belakang (luar kotak modal)
+  document.getElementById('modal-preview').addEventListener('click', function(e) {
+    if (e.target === this) {
+      tutupModal();
+    }
+  });
+</script>
+
 <?php bottom(); ?>
