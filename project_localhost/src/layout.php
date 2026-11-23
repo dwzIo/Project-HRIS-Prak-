@@ -190,7 +190,7 @@ function gaya()
 
       /* Pesan dan pemberitahuan */
       .notif {
-        @apply rounded-md border px-4 py-3 text-sm;
+        @apply rounded-md px-4 py-3 text-sm;
       }
 
       .notif-netral {
@@ -198,7 +198,7 @@ function gaya()
       }
 
       .notif-peringatan {
-        @apply border-warn-200 bg-warn-50 text-warn-800;
+        @apply bg-warn-50 text-warn-800;
       }
 
       .notif-info {
@@ -210,7 +210,7 @@ function gaya()
       }
 
       .notif-bahaya {
-        @apply border-danger-200 bg-danger-50 text-danger-800;
+        @apply bg-danger-50 text-danger-800;
       }
 
       /* Teks menu sidebar: memudar saat sidebar diciutkan (layar md ke atas) */

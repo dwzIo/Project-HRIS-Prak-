@@ -1,6 +1,8 @@
 <?php
-// Di-include paling atas setiap halaman (session_start harus di baris awal)
-session_start();
+// Di-include paling atas setiap halaman (session dimulai lewat src/keamanan.php)
+include_once __DIR__ . "/keamanan.php";
+mulai_sesi_aman();       // cookie session aman (HttpOnly, SameSite, Secure bila HTTPS)
+kirim_header_keamanan(); // header keamanan HTTP
 // Sinkronisasi zona waktu resmi ke WIB (Waktu Indonesia Barat / UTC+7)
 date_default_timezone_set('Asia/Jakarta');
 
@@ -58,20 +60,39 @@ function url_login(string $peran = ''): string
 function proses_login(string $peran_halaman): string
 {
   $nip = trim(isi('nip'));
+
+  // Batasi percobaan: jika sudah terlalu banyak gagal, tolak sebelum memeriksa password
+  $sisa = login_sisa_kunci('login', $nip);
+  if ($sisa > 0) {
+    return pesan_terkunci($sisa);
+  }
+
   $user = satu("SELECT * FROM users WHERE nip=?", array($nip));
 
-  if (!$user || !password_verify(isi('password'), $user['password'])) {
+  // Hash palsu: password_verify tetap dijalankan walau NIP tidak ada, agar waktu respons tidak membocorkan NIP yang valid
+  $hash = '$2y$10$abcdefghijklmnopqrstuuabcdefghijklmnopqrstuvwxyzABCDE';
+  if ($user) {
+    $hash = $user['password'];
+  }
+  $cocok = password_verify((string)isi('password'), $hash);
+
+  if (!$user || !$cocok) {
+    login_catat_gagal('login', $nip);
     return 'NIP atau password salah.';
   }
   // Password benar, tetapi akunnya milik peran lain: arahkan ke halaman yang tepat
+  // (tetap dihitung sebagai percobaan gagal agar halaman ini tidak bisa dipakai menguji password)
   if ($user['role'] !== $peran_halaman) {
+    login_catat_gagal('login', $nip);
     if ($peran_halaman === 'admin') {
       return 'Akun ini bukan akun admin. Silakan masuk lewat halaman login karyawan.';
     }
     return 'Akun ini adalah akun admin. Silakan masuk lewat halaman login admin.';
   }
 
-  session_regenerate_id(true);
+  login_bersihkan('login', $nip);
+  session_regenerate_id(true);                  // cegah session fixation
+  $_SESSION['csrf'] = bin2hex(random_bytes(32)); // token CSRF baru setelah login
   $_SESSION['login'] = true;
   $_SESSION['id'] = $user['id'];
   $_SESSION['nama'] = $user['nama'];
@@ -292,33 +313,168 @@ function ada_file($nama)
 {
   return isset($_FILES[$nama]) && $_FILES[$nama]['error'] !== UPLOAD_ERR_NO_FILE;
 }
+// MIME asli (dibaca dari ISI file lewat finfo) yang diizinkan untuk tiap ekstensi
+function mime_diizinkan(string $ext): array
+{
+  $peta = array(
+    'jpg' => array('image/jpeg'),
+    'jpeg' => array('image/jpeg'),
+    'png' => array('image/png'),
+    'pdf' => array('application/pdf'),
+    'doc' => array('application/msword', 'application/CDFV2', 'application/x-ole-storage', 'application/vnd.ms-office'),
+    // docx adalah arsip zip; finfo kadang melaporkannya sebagai zip/octet-stream, jadi isinya dicek ulang di bawah
+    'docx' => array(
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/zip',
+      'application/x-zip-compressed',
+      'application/octet-stream'
+    )
+  );
+  return isset($peta[$ext]) ? $peta[$ext] : array();
+}
+
+// Memeriksa isi file sebenarnya. Mengembalikan array(ekstensi_final, pesan_error).
+function periksa_isi_file(string $lokasi, string $ext): array
+{
+  if (!class_exists('finfo')) {
+    return array(null, 'Ekstensi PHP "fileinfo" belum aktif di server, sehingga file tidak dapat diperiksa.');
+  }
+  $finfo = new finfo(FILEINFO_MIME_TYPE);
+  $mime = (string)$finfo->file($lokasi);
+  if (!in_array($mime, mime_diizinkan($ext), true)) {
+    return array(null, 'Isi file tidak sesuai dengan tipe yang diizinkan.');
+  }
+
+  $kepala = (string)file_get_contents($lokasi, false, null, 0, 8);
+
+  if ($ext === 'doc' && substr($kepala, 0, 4) !== "\xD0\xCF\x11\xE0") {
+    return array(null, 'Isi file bukan dokumen Word (.doc) yang valid.');
+  }
+  if ($ext === 'docx') {
+    if (substr($kepala, 0, 2) !== 'PK') {
+      return array(null, 'Isi file bukan dokumen Word (.docx) yang valid.');
+    }
+    if (class_exists('ZipArchive')) {
+      $zip = new ZipArchive();
+      if ($zip->open($lokasi) !== true || $zip->locateName('word/document.xml') === false) {
+        return array(null, 'Isi file bukan dokumen Word (.docx) yang valid.');
+      }
+      $zip->close();
+    }
+  }
+  if ($mime === 'image/jpeg') {
+    return array('jpg', null);
+  }
+  if ($mime === 'image/png') {
+    return array('png', null);
+  }
+  return array($ext, null);
+}
+
+// Gambar dibaca ulang lalu disimpan sebagai file baru (re-encode) agar metadata/data tersisip terbuang.
+// Jika GD tidak tersedia, gambar tetap divalidasi lewat getimagesize lalu disimpan apa adanya.
+function simpan_gambar_aman(string $sumber, string $tujuan, string $mime): bool
+{
+  $info = @getimagesize($sumber);
+  if (!$info || $info['mime'] !== $mime) {
+    return false;
+  }
+  if ($info[0] < 1 || $info[1] < 1 || $info[0] * $info[1] > 25000000) { // batas ~25 megapiksel
+    return false;
+  }
+  if (!function_exists('imagecreatefromjpeg') || !function_exists('imagecreatefrompng')) {
+    return move_uploaded_file($sumber, $tujuan);
+  }
+
+  if ($mime === 'image/jpeg') {
+    $im = @imagecreatefromjpeg($sumber);
+  } else {
+    $im = @imagecreatefrompng($sumber);
+  }
+  if (!$im) {
+    return false;
+  }
+
+  if ($mime === 'image/jpeg') {
+    // Pertahankan orientasi foto dari kamera (EXIF) karena EXIF ikut terbuang saat re-encode
+    if (function_exists('exif_read_data') && function_exists('imagerotate')) {
+      $exif = @exif_read_data($sumber);
+      $arah = isset($exif['Orientation']) ? (int)$exif['Orientation'] : 1;
+      $putar = 0;
+      if ($arah === 3) {
+        $putar = 180;
+      } elseif ($arah === 6) {
+        $putar = -90;
+      } elseif ($arah === 8) {
+        $putar = 90;
+      }
+      if ($putar !== 0) {
+        $hasil = imagerotate($im, $putar, 0);
+        if ($hasil) {
+          imagedestroy($im);
+          $im = $hasil;
+        }
+      }
+    }
+    $ok = imagejpeg($im, $tujuan, 90);
+  } else {
+    imagealphablending($im, false);
+    imagesavealpha($im, true);
+    $ok = imagepng($im, $tujuan, 6);
+  }
+  imagedestroy($im);
+  return $ok;
+}
+
 function upload($nama, $folder, $ekstensi, $maks_mb)
 {
   if (!ada_file($nama)) {
     return array(null, 'Pilih file terlebih dahulu.');
   }
   $f = $_FILES[$nama];
+  if (is_array($f['error'])) {
+    return array(null, 'Upload tidak valid.'); // tolak kiriman berbentuk array
+  }
   if ($f['error'] === UPLOAD_ERR_INI_SIZE || $f['error'] === UPLOAD_ERR_FORM_SIZE) {
     return array(null, 'Ukuran file melebihi batas server (upload_max_filesize di php.ini).');
   }
   if ($f['error'] !== UPLOAD_ERR_OK) {
     return array(null, 'Upload gagal (kode error ' . $f['error'] . ').');
   }
+  if (!is_uploaded_file($f['tmp_name'])) {
+    return array(null, 'Upload tidak valid.');
+  }
   $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
-  if (!in_array($ext, $ekstensi)) {
+  if (!in_array($ext, $ekstensi, true)) {
     return array(null, 'Tipe file harus: ' . implode(', ', $ekstensi) . '.');
   }
-  if ($f['size'] > $maks_mb * 1048576) {
+  if ($f['size'] > $maks_mb * 1048576 || filesize($f['tmp_name']) > $maks_mb * 1048576) {
     return array(null, 'Ukuran file maksimal ' . $maks_mb . ' MB.');
   }
+
+  // Jangan percaya ekstensi: periksa MIME dari isi file
+  $periksa = periksa_isi_file($f['tmp_name'], $ext);
+  if ($periksa[1] !== null) {
+    return array(null, $periksa[1]);
+  }
+  $ext_final = $periksa[0];
+
   $tujuan = FOLDER_UPLOAD . '/' . $folder;
-  if (!is_dir($tujuan) && !mkdir($tujuan, 0777, true)) {
+  if (!is_dir($tujuan) && !mkdir($tujuan, 0755, true)) {
     return array(null, 'Folder uploads/' . $folder . ' tidak bisa dibuat. Periksa izin folder.');
   }
-  $nama_baru = bin2hex(random_bytes(8)) . '.' . $ext; // nama diganti acak
-  if (!move_uploaded_file($f['tmp_name'], $tujuan . '/' . $nama_baru)) {
+  $nama_baru = bin2hex(random_bytes(16)) . '.' . $ext_final; // nama diganti acak
+  $lokasi_baru = $tujuan . '/' . $nama_baru;
+
+  if ($ext_final === 'jpg' || $ext_final === 'png') {
+    $mime = $ext_final === 'jpg' ? 'image/jpeg' : 'image/png';
+    if (!simpan_gambar_aman($f['tmp_name'], $lokasi_baru, $mime)) {
+      return array(null, 'File gambar tidak valid atau rusak.');
+    }
+  } elseif (!move_uploaded_file($f['tmp_name'], $lokasi_baru)) {
     return array(null, 'File gagal disimpan ke folder uploads/' . $folder . '. Periksa izin tulis folder.');
   }
+  @chmod($lokasi_baru, 0644);
   return array($nama_baru, null);
 }
 
@@ -352,3 +508,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && 
   pesan('Ukuran data yang dikirim melebihi batas server (post_max_size di php.ini).', 'gagal');
   pindah(basename($_SERVER['PHP_SELF']));
 }
+
+// Semua permintaan POST wajib membawa token CSRF yang benar (lihat src/keamanan.php)
+csrf_wajib();
