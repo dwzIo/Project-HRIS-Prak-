@@ -164,8 +164,8 @@ top('Absensi Kehadiran');
         <!-- Hari libur -->
         <div class="notif notif-peringatan my-2 text-center text-xs">
           <span class="mx-auto mb-1 block w-fit"><?= ikon('kalender', 'h-6 w-6') ?></span>
-          <p class="font-semibold mt-0.5 text-emerald-800">Hari Libur / Tidak Ada Jam Kerja</p>
-          <p class="mt-1 text-emerald-800">Tidak ada jadwal presensi yang aktif untuk hari ini.</p>
+          <p class="font-semibold mt-0.5">Hari Libur / Tidak Ada Jam Kerja</p>
+          <p class="mt-1">Tidak ada jadwal presensi yang aktif untuk hari ini.</p>
         </div>
 
       <?php elseif (!$absen_hari_ini): ?>

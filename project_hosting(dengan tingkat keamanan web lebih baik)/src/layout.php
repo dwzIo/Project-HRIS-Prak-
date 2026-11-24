@@ -613,13 +613,13 @@ function form_login(string $peran, string $nip_isi = ''): void
           </p>
         <?php endif; ?>
 
-        <p class="mt-6 border-t border-stone-200 pt-4 text-center text-sm text-stone-500">
+        <!-- <p class="mt-6 border-t border-stone-200 pt-4 text-center text-sm text-stone-500">
           <?php if ($peran === 'admin'): ?>
             Bukan admin? <a href="login_karyawan.php" class="font-medium text-stone-700 hover:underline">Masuk sebagai karyawan</a>
           <?php else: ?>
             Admin HR? <a href="login_admin.php" class="font-medium text-stone-700 hover:underline">Masuk sebagai admin</a>
           <?php endif; ?>
-        </p>
+        </p> -->
       </div>
 <?php
 }

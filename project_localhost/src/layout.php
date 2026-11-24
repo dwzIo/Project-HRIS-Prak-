@@ -194,7 +194,7 @@ function gaya()
       }
 
       .notif-netral {
-        @apply border-stone-200 bg-stone-50 text-stone-700;
+        @apply bg-stone-50 text-stone-700;
       }
 
       .notif-peringatan {
@@ -202,11 +202,11 @@ function gaya()
       }
 
       .notif-info {
-        @apply border-info-200 bg-info-50 text-info-800;
+        @apply bg-info-50 text-info-800;
       }
 
       .notif-sukses {
-        @apply border-ok-200 bg-ok-50 text-ok-800;
+        @apply bg-ok-50 text-ok-800;
       }
 
       .notif-bahaya {
