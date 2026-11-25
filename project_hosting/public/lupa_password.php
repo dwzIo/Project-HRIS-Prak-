@@ -1,8 +1,4 @@
 <?php
-// Lupa password, KHUSUS KARYAWAN, dengan persetujuan admin:
-// 1) karyawan mengajukan (NIP + email)
-// 2) admin menyetujui / menolak di menu Pengajuan
-// 3) setelah disetujui, karyawan membuka halaman status ini lagi dan mengisi password baru.
 include __DIR__ . "/../src/auth.php";
 include __DIR__ . "/../src/layout.php";
 
@@ -27,13 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Hanya karyawan; admin tidak bisa memakai fitur ini
     $user = satu("SELECT * FROM users WHERE nip=? AND role='karyawan'", array($nip));
 
-    // Batasi tebak-tebakan NIP + email (sama seperti login)
-    $sisa = login_sisa_kunci('lupa', $nip);
-    if ($sisa > 0) {
-      $user = null;
-      $teks_kunci = pesan_terkunci($sisa);
-    }
-
     if ($user && strtolower($user['email']) === strtolower($email)) {
       jalankan("DELETE FROM password_resets WHERE user_id=?", array($user['id']));
       $baru = bin2hex(random_bytes(16));
@@ -43,12 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       );
       pindah('lupa_password.php?kode=' . $baru);
     }
-    if (isset($teks_kunci)) {
-      $teks = $teks_kunci;
-    } else {
-      login_catat_gagal('lupa', $nip);
-      $teks = 'NIP dan email tidak cocok dengan akun karyawan mana pun.';
-    }
+    $teks = 'NIP dan email tidak cocok dengan akun karyawan mana pun.';
 
   } elseif (isi('aksi') === 'reset') {
     $permintaan = null;
@@ -122,7 +106,7 @@ if ($kode !== '') {
     <?php endif; ?>
 
     <?php if ($tahap === 'minta'): ?>
-      <form method="POST" data-validasi novalidate><?= csrf_field() ?>
+      <form method="POST" data-validasi novalidate>
         <input type="hidden" name="aksi" value="minta">
         <?php isian_login('NIP', 'nip', 'text', '', 'required'); ?>
         <?php isian_login('Email terdaftar', 'email', 'email', '', 'required'); ?>
@@ -142,7 +126,7 @@ if ($kode !== '') {
         <p class="font-semibold">Permintaan disetujui</p>
         <p class="mt-1">Buat password baru untuk NIP <?= e($permintaan['nip']) ?>. Berlaku sampai <?= e(date('d M Y H:i', $permintaan['expires_at'])) ?>.</p>
       </div>
-      <form method="POST" data-validasi novalidate><?= csrf_field() ?>
+      <form method="POST" data-validasi novalidate>
         <input type="hidden" name="aksi" value="reset">
         <input type="hidden" name="kode" value="<?= e($kode) ?>">
         <?php isian_login('Password baru', 'password', 'password', '', 'required'); ?>

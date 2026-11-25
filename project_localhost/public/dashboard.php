@@ -17,7 +17,7 @@ if ($admin) {
   $hadir_hari_ini = angka("SELECT COUNT(*) FROM attendances WHERE tanggal=? AND status IN ('Hadir','Terlambat')", array($hari_ini));
   $cuti_menunggu = angka("SELECT COUNT(*) FROM leave_requests WHERE status='Menunggu'");
   $surat_menunggu = angka("SELECT COUNT(*) FROM letter_requests WHERE status IN ('Menunggu','Diproses')");
-  $data_menunggu = angka("SELECT COUNT(*) FROM change_requests WHERE status='Menunggu'");
+  $data_menunggu = angka("SELECT COUNT(*) FROM change_requests WHERE status='Menunggu'") + angka("SELECT COUNT(*) FROM password_resets WHERE status='Menunggu'") + angka("SELECT COUNT(*) FROM documents WHERE status='Menunggu'");
 
   $ringkasan = array(
     array('Total Karyawan', $total_karyawan, 'admin_karyawan.php'),
@@ -78,7 +78,7 @@ top('Selamat Datang, ' . $_SESSION['nama']);
 <!-- Ringkasan Angka / Status -->
 <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 <?= $admin ? 'xl:grid-cols-5' : 'xl:grid-cols-3' ?>">
   <?php foreach ($ringkasan as $r): ?>
-    <a href="<?= $r[2] ?>" class="kartu block transition-all hover:border-teal-400 hover:shadow-sm">
+    <a href="<?= $r[2] ?>" class="kartu block transition-all hover:border-stone-300 hover:bg-stone-100 hover:shadow-sm">
       <p class="text-xs text-stone-500"><?= e($r[0]) ?></p>
       <p class="mt-1 text-2xl font-bold text-stone-900"><?= e($r[1]) ?></p>
     </a>
@@ -106,7 +106,7 @@ top('Selamat Datang, ' . $_SESSION['nama']);
         <?php endforeach; ?>
       </div>
       <div class="mt-3 text-right">
-        <a href="<?= $admin ? 'admin_cuti.php' : 'cuti.php' ?>" class="text-xs font-semibold text-teal-700 hover:underline">Lihat Semua →</a>
+        <a href="<?= $admin ? 'admin_cuti.php' : 'cuti.php' ?>" class="text-xs font-semibold text-black hover:underline">Lihat Semua →</a>
       </div>
     <?php endif; ?>
     <?php kartu_akhir(); ?>
@@ -132,7 +132,7 @@ top('Selamat Datang, ' . $_SESSION['nama']);
         <?php endforeach; ?>
       </div>
       <div class="mt-3 text-right">
-        <a href="<?= $admin ? 'admin_pengajuan.php' : 'surat.php' ?>" class="text-xs font-semibold text-teal-700 hover:underline">Lihat Semua →</a>
+        <a href="<?= $admin ? 'admin_pengajuan.php' : 'surat.php' ?>" class="text-xs font-semibold text-black hover:underline">Lihat Semua →</a>
       </div>
     <?php endif; ?>
     <?php kartu_akhir(); ?>

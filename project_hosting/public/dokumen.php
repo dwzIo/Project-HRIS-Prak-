@@ -37,7 +37,7 @@ top('Dokumen saya');
   <!-- Form unggah -->
   <div>
     <?php kartu_awal('Unggah dokumen'); ?>
-    <form method="POST" enctype="multipart/form-data" data-validasi novalidate><?= csrf_field() ?>
+    <form method="POST" enctype="multipart/form-data" data-validasi novalidate>
       <?php pilih('Jenis dokumen', 'jenis', array_combine($jenis_dok, $jenis_dok)); ?>
 
       <div class="mb-4">
@@ -61,14 +61,14 @@ top('Dokumen saya');
       <?php foreach ($dokumen as $d): ?>
         <tr>
           <td data-label="Jenis">
-            <a href="unduh.php?jenis=dokumen&id=<?= e($d['id']) ?>" target="_blank" class="tautan"><?= e($d['jenis']) ?></a>
+            <a href="unduh.php?jenis=dokumen&id=<?= e($d['id']) ?>" target="_blank" class="tautan-dokumen"><?= e($d['jenis']) ?></a>
           </td>
           <td data-label="Diunggah"><?= tgl($d['uploaded_at']) ?></td>
           <td data-label="Status"><?= lencana($d['status']) ?></td>
           <td data-label="">
             <div class="flex gap-1.5">
-              <a href="unduh.php?jenis=dokumen&id=<?= e($d['id']) ?>&unduh=1" class="btn btn-garis btn-kecil">Unduh</a>
-              <form method="POST" data-konfirmasi="Hapus dokumen ini?"><?= csrf_field() ?>
+              <a href="unduh.php?jenis=dokumen&id=<?= e($d['id']) ?>&unduh=1" class="btn btn-zinc btn-kecil">Unduh</a>
+              <form method="POST" data-konfirmasi="Hapus dokumen ini?">
                 <input type="hidden" name="aksi" value="hapus">
                 <input type="hidden" name="id" value="<?= e($d['id']) ?>">
                 <button class="btn btn-bahaya btn-kecil">Hapus</button>

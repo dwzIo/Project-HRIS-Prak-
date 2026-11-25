@@ -82,9 +82,8 @@ if (isset($baris['jenis'])) {
 }
 $nama_unduh = $nama_unduh . '.' . $ext;
 
-// Hanya PDF dan gambar yang boleh ditampilkan di browser; dokumen Word selalu diunduh
 $cara = 'inline';
-if (isset($_GET['unduh']) || !in_array($ext, array('pdf', 'jpg', 'jpeg', 'png'), true)) {
+if (isset($_GET['unduh'])) {
   $cara = 'attachment';
 }
 
@@ -96,10 +95,6 @@ header('Content-Type: ' . $mime);
 header('Content-Length: ' . filesize($lokasi));
 header('Content-Disposition: ' . $cara . '; filename="' . $nama_unduh . '"');
 header('X-Content-Type-Options: nosniff');
-header('Cross-Origin-Resource-Policy: same-origin');
-if (strpos($mime, 'image/') === 0) {
-  header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox");
-}
 header('Cache-Control: private, no-cache');
 readfile($lokasi);
 exit;

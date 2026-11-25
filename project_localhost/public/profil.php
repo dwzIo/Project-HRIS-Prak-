@@ -38,6 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($cek_menunggu) {
       pesan('Masih ada pengajuan Anda yang menunggu persetujuan HR.', 'gagal');
     } else {
+      // Email baru tidak boleh sama dengan email akun lain
+      $email_baru = trim(isi('email'));
+      if ($email_baru !== '' && $email_baru !== (string)$u['email'] && angka("SELECT COUNT(*) FROM users WHERE lower(email)=lower(?) AND id<>?", array($email_baru, $id)) > 0) {
+        pesan('Email tersebut sudah dipakai akun lain.', 'gagal');
+        pindah('profil.php');
+      }
+
       // Ambil file bukti (jika ada)
       $bukti = null;
       if (ada_file('bukti')) {

@@ -9,19 +9,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $id = isi('id');
 
   if ($aksi === 'data') {
-    // cari data pengajuan yang diklik admin
+    // Cari data pengajuan yang diklik admin
     $c = satu("SELECT * FROM change_requests WHERE id=? AND status='Menunggu'", array($id));
     if ($c) {
       $status = (isi('keputusan') === 'Disetujui') ? 'Disetujui' : 'Ditolak';
       $catatan = trim(isi('catatan'));
 
-      // ambil SEMUA data perubahan milik karyawan ini yang diajukan di waktu (created_at) yang sama
+      // Ambil SEMUA data perubahan milik karyawan ini yang diajukan di waktu (created_at) yang sama
       $semua_perubahan = daftar(
         "SELECT * FROM change_requests WHERE user_id=? AND created_at=? AND status='Menunggu'",
         array($c['user_id'], $c['created_at'])
       );
 
-      // jika disetujui, update semua data baru ke tabel users
+      // Email baru tidak boleh sama dengan email akun lain: jika bentrok, pengajuan ditolak otomatis
+      if ($status === 'Disetujui') {
+        foreach ($semua_perubahan as $item) {
+          if ($item['field'] === 'email' && angka("SELECT COUNT(*) FROM users WHERE lower(email)=lower(?) AND id<>?", array($item['nilai_baru'], $item['user_id'])) > 0) {
+            $status = 'Ditolak';
+            $catatan = trim($catatan . ' Email baru sudah dipakai akun lain.');
+          }
+        }
+      }
+
+      // Jika disetujui, update semua data baru ke tabel users
       if ($status === 'Disetujui') {
         foreach ($semua_perubahan as $item) {
           if (isset($boleh[$item['field']])) {
@@ -30,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       }
 
-      // update status semua baris dalam pengajuan tersebut
+      // Update status semua baris dalam pengajuan tersebut
       jalankan(
         "UPDATE change_requests SET status=?, catatan=? WHERE user_id=? AND created_at=? AND status='Menunggu'",
         array($status, $catatan, $c['user_id'], $c['created_at'])
@@ -90,7 +100,7 @@ $resets = daftar("SELECT r.*, u.nip, u.nama FROM password_resets r JOIN users u 
 top('Pengajuan karyawan');
 ?>
 
-<!-- permintaan reset password -->
+<!-- Permintaan reset password -->
 <?php kartu_awal('Permintaan reset password'); ?>
 <p class="keterangan -mt-2 mb-4 text-sm">Karyawan baru bisa mengganti passwordnya setelah permintaan disetujui di sini.</p>
 
@@ -130,7 +140,7 @@ top('Pengajuan karyawan');
 <?php kartu_akhir(); ?>
 
 
-<!-- perubahan data pribadi -->
+<!-- Perubahan data pribadi -->
 <?php kartu_awal('Perubahan data pribadi'); ?>
 
 <?php if (count($perubahan) == 0): ?>
@@ -179,7 +189,7 @@ top('Pengajuan karyawan');
 <?php kartu_akhir(); ?>
 
 
-<!-- permintaan surat -->
+<!-- Permintaan surat -->
 <?php kartu_awal('Permintaan surat'); ?>
 
 <?php if (count($surat) == 0): ?>
@@ -212,7 +222,7 @@ top('Pengajuan karyawan');
 <?php kartu_akhir(); ?>
 
 
-<!-- verifikasi dokumen -->
+<!-- Verifikasi dokumen -->
 <?php kartu_awal('Verifikasi dokumen'); ?>
 
 <?php if (count($dokumen) == 0): ?>
@@ -227,7 +237,7 @@ top('Pengajuan karyawan');
           data-url="unduh.php?jenis=dokumen&id=<?= e($r['id']) ?>"
           data-judul="Dokumen: <?= e($r['jenis']) ?> (<?= e($r['nama']) ?>)"
           data-ekstensi="<?= e(strtolower(pathinfo($r['file'], PATHINFO_EXTENSION))) ?>"
-          class="tautan inline-flex items-center gap-1.5">
+          class="tautan-dokumen inline-flex items-center gap-1.5">
           <?= ikon('dokumen', 'h-4 w-4') ?>
           <span><?= e($r['jenis']) ?></span>
         </button>
@@ -248,7 +258,7 @@ top('Pengajuan karyawan');
 <?php kartu_akhir(); ?>
 
 
-<!-- jendela pratinjau berkas -->
+<!-- Jendela pratinjau berkas (dikendalikan assets/app.js) -->
 <div id="modal-preview" class="fixed inset-0 z-50 hidden items-center justify-center bg-stone-900/60 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-judul">
   <div class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-stone-200 bg-white">
 
@@ -263,7 +273,7 @@ top('Pengajuan karyawan');
     <div id="modal-isi" class="flex min-h-[350px] items-center justify-center overflow-auto bg-stone-100 p-4"></div>
 
     <div class="flex items-center justify-between gap-3 border-t border-stone-200 bg-white px-5 py-3">
-      <a id="modal-unduh" href="#" download class="btn btn-garis btn-kecil gap-1.5"><?= ikon('dokumen', 'h-4 w-4') ?><span>Unduh berkas asli</span></a>
+      <a id="modal-unduh" href="#" download class="btn btn-zinc btn-kecil gap-1.5"><?= ikon('dokumen', 'h-4 w-4') ?><span>Unduh berkas asli</span></a>
       <button type="button" data-tutup-pratinjau class="btn btn-utama btn-kecil">Tutup</button>
     </div>
 

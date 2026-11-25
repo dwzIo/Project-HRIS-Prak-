@@ -310,7 +310,7 @@ function aktifkanPotongFoto() {
 
 
 // 7. Sidebar
-//    - Layar lebar: tombol panel menciutkan sidebar menjadi hanya ikon
+//    - Layar lebar: tombol silang menciutkan sidebar menjadi hanya ikon (jadi garis tiga untuk melebarkan)
 //      (animasi lebar, pilihan diingat di browser)
 //    - HP: sidebar berupa laci yang meluncur dari kiri, dengan lapisan gelap di belakangnya
 function aktifkanSidebar() {

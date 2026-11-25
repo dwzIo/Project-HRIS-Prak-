@@ -4,11 +4,13 @@ CREATE TABLE users (
   nip TEXT NOT NULL UNIQUE,
   nama TEXT NOT NULL,
   email TEXT NOT NULL,
-  no_hp TEXT, alamat TEXT, kontak_darurat TEXT, foto TEXT,
+  no_hp TEXT, alamat TEXT, foto TEXT,
   password TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'karyawan' CHECK (role IN ('admin','karyawan')),
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+-- Email tidak boleh kembar (huruf besar/kecil dianggap sama)
+CREATE UNIQUE INDEX idx_users_email ON users (lower(email));
 CREATE TABLE change_requests (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -41,4 +43,47 @@ CREATE TABLE password_resets (
   catatan TEXT,
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL
+);
+
+-- Sumber tunggal jam kerja. Tanggal di luar rentang mana pun = libur (tanpa presensi & tanpa Alfa otomatis).
+CREATE TABLE work_schedules (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL,
+  tanggal_mulai TEXT NOT NULL,
+  tanggal_selesai TEXT NOT NULL,
+  jam_masuk_buka TEXT NOT NULL,
+  jam_masuk_tepat TEXT NOT NULL,
+  jam_pulang_buka TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_work_schedules_rentang ON work_schedules (tanggal_mulai, tanggal_selesai);
+
+-- schedule_id = jadwal yang berlaku saat absensi dicatat (NULL jika jadwalnya sudah diganti/dihapus)
+CREATE TABLE attendances (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tanggal TEXT NOT NULL,
+  jam_masuk TEXT,
+  jam_pulang TEXT,
+  status TEXT NOT NULL DEFAULT 'Hadir' CHECK (status IN ('Hadir','Izin','Sakit','Terlambat','Alfa')),
+  catatan TEXT,
+  bukti TEXT,
+  schedule_id TEXT REFERENCES work_schedules(id) ON DELETE SET NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, tanggal)
+);
+CREATE INDEX idx_attendances_schedule ON attendances (schedule_id);
+
+CREATE TABLE leave_requests (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  jenis_cuti TEXT NOT NULL,
+  tanggal_mulai TEXT NOT NULL,
+  tanggal_selesai TEXT NOT NULL,
+  jumlah_hari INTEGER NOT NULL,
+  alasan TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Menunggu' CHECK (status IN ('Menunggu','Disetujui','Ditolak')),
+  catatan_admin TEXT,
+  bukti TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );

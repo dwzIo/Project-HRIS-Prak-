@@ -21,6 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         array($c['user_id'], $c['created_at'])
       );
 
+      // Email baru tidak boleh sama dengan email akun lain: jika bentrok, pengajuan ditolak otomatis
+      if ($status === 'Disetujui') {
+        foreach ($semua_perubahan as $item) {
+          if ($item['field'] === 'email' && angka("SELECT COUNT(*) FROM users WHERE lower(email)=lower(?) AND id<>?", array($item['nilai_baru'], $item['user_id'])) > 0) {
+            $status = 'Ditolak';
+            $catatan = trim($catatan . ' Email baru sudah dipakai akun lain.');
+          }
+        }
+      }
+
       // Jika disetujui, update semua data baru ke tabel users
       if ($status === 'Disetujui') {
         foreach ($semua_perubahan as $item) {
@@ -112,7 +122,7 @@ top('Pengajuan karyawan');
       <td data-label="Status"><?= lencana($statusTampil) ?></td>
       <td data-label="Keputusan">
         <?php if ($statusTampil === 'Menunggu'): ?>
-          <form method="POST" class="flex flex-wrap items-center gap-1.5"><?= csrf_field() ?>
+          <form method="POST" class="flex flex-wrap items-center gap-1.5">
             <input type="hidden" name="aksi" value="reset">
             <input type="hidden" name="id" value="<?= e($r['id']) ?>">
             <input name="catatan" placeholder="Catatan" class="kolom w-32 py-1">
@@ -161,7 +171,7 @@ top('Pengajuan karyawan');
       </td>
       <td data-label="Keputusan">
         <?php if ($r['status'] === 'Menunggu'): ?>
-          <form method="POST" class="flex flex-wrap items-center gap-1.5"><?= csrf_field() ?>
+          <form method="POST" class="flex flex-wrap items-center gap-1.5">
             <input type="hidden" name="aksi" value="data">
             <input type="hidden" name="id" value="<?= e($r['id']) ?>">
             <input name="catatan" placeholder="Catatan" class="kolom w-32 py-1">
@@ -193,7 +203,7 @@ top('Pengajuan karyawan');
       <td data-label="Keperluan"><?= e($r['keperluan']) ?></td>
       <td data-label="Status"><?= lencana($r['status']) ?></td>
       <td data-label="Proses">
-        <form method="POST" enctype="multipart/form-data" class="flex flex-wrap items-center gap-1.5"><?= csrf_field() ?>
+        <form method="POST" enctype="multipart/form-data" class="flex flex-wrap items-center gap-1.5">
           <input type="hidden" name="aksi" value="surat">
           <input type="hidden" name="id" value="<?= e($r['id']) ?>">
           <select name="status" class="kolom w-28 py-1">
@@ -227,14 +237,14 @@ top('Pengajuan karyawan');
           data-url="unduh.php?jenis=dokumen&id=<?= e($r['id']) ?>"
           data-judul="Dokumen: <?= e($r['jenis']) ?> (<?= e($r['nama']) ?>)"
           data-ekstensi="<?= e(strtolower(pathinfo($r['file'], PATHINFO_EXTENSION))) ?>"
-          class="tautan inline-flex items-center gap-1.5">
+          class="tautan-dokumen inline-flex items-center gap-1.5">
           <?= ikon('dokumen', 'h-4 w-4') ?>
           <span><?= e($r['jenis']) ?></span>
         </button>
       </td>
       <td data-label="Status"><?= lencana($r['status']) ?></td>
       <td data-label="">
-        <form method="POST" class="flex gap-1.5"><?= csrf_field() ?>
+        <form method="POST" class="flex gap-1.5">
           <input type="hidden" name="aksi" value="dokumen">
           <input type="hidden" name="id" value="<?= e($r['id']) ?>">
           <button name="status" value="Terverifikasi" class="btn btn-utama btn-kecil">Verifikasi</button>
@@ -263,7 +273,7 @@ top('Pengajuan karyawan');
     <div id="modal-isi" class="flex min-h-[350px] items-center justify-center overflow-auto bg-stone-100 p-4"></div>
 
     <div class="flex items-center justify-between gap-3 border-t border-stone-200 bg-white px-5 py-3">
-      <a id="modal-unduh" href="#" download class="btn btn-garis btn-kecil gap-1.5"><?= ikon('dokumen', 'h-4 w-4') ?><span>Unduh berkas asli</span></a>
+      <a id="modal-unduh" href="#" download class="btn btn-zinc btn-kecil gap-1.5"><?= ikon('dokumen', 'h-4 w-4') ?><span>Unduh berkas asli</span></a>
       <button type="button" data-tutup-pratinjau class="btn btn-utama btn-kecil">Tutup</button>
     </div>
 

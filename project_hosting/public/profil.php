@@ -38,6 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($cek_menunggu) {
       pesan('Masih ada pengajuan Anda yang menunggu persetujuan HR.', 'gagal');
     } else {
+      // Email baru tidak boleh sama dengan email akun lain
+      $email_baru = trim(isi('email'));
+      if ($email_baru !== '' && $email_baru !== (string)$u['email'] && angka("SELECT COUNT(*) FROM users WHERE lower(email)=lower(?) AND id<>?", array($email_baru, $id)) > 0) {
+        pesan('Email tersebut sudah dipakai akun lain.', 'gagal');
+        pindah('profil.php');
+      }
+
       // Ambil file bukti (jika ada)
       $bukti = null;
       if (ada_file('bukti')) {
@@ -110,7 +117,7 @@ top('Profil saya');
         <?php endforeach; ?>
       </dl>
 
-      <form method="POST" enctype="multipart/form-data"><?= csrf_field() ?>
+      <form method="POST" enctype="multipart/form-data">
         <input type="hidden" name="aksi" value="foto">
         <div class="mb-3">
           <label class="label">Ganti foto</label>
@@ -122,7 +129,7 @@ top('Profil saya');
     </section>
 
     <?php kartu_awal('Ganti password'); ?>
-    <form method="POST"><?= csrf_field() ?>
+    <form method="POST">
       <input type="hidden" name="aksi" value="password">
       <?php isian('Password lama', 'lama', 'password', '', 'required'); ?>
       <?php isian('Password baru', 'baru', 'password', '', 'required'); ?>
@@ -143,7 +150,7 @@ top('Profil saya');
       <p class="notif notif-info">Anda masih memiliki pengajuan yang berstatus <b>Menunggu</b>. Harap tunggu konfirmasi HR.</p>
 
     <?php else: ?>
-      <form method="POST" enctype="multipart/form-data" onsubmit="return confirm('Apakah Anda yakin ingin mengajukan perubahan data ini? Setelah disetujui, data tidak dapat diubah selama 90 hari.');"><?= csrf_field() ?>
+      <form method="POST" enctype="multipart/form-data" onsubmit="return confirm('Apakah Anda yakin ingin mengajukan perubahan data ini? Setelah disetujui, data tidak dapat diubah selama 90 hari.');">
         <input type="hidden" name="aksi" value="ubah">
         <p class="keterangan mb-3">Isi data yang ingin diubah saja (bisa lebih dari satu sekaligus), kosongkan jika tidak ingin diubah.</p>
 

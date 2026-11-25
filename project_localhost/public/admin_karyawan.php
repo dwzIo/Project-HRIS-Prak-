@@ -25,7 +25,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim(isi('email'));
     $no_hp = trim(isi('no_hp'));
     $alamat = trim(isi('alamat'));
-    $jabatan = trim(isi('jabatan'));
     $password = isi('password');
     $konfirmasi = isi('konfirmasi');
     $role = 'karyawan';
@@ -54,6 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Nomor HP hanya boleh berisi angka.';
       } elseif (angka("SELECT COUNT(*) FROM users WHERE nip=? AND id<>?", array($nip, $uid)) > 0) {
         $error = 'NIP sudah dipakai akun lain.';
+      } elseif (angka("SELECT COUNT(*) FROM users WHERE lower(email)=lower(?) AND id<>?", array($email, $uid)) > 0) {
+        $error = 'Email sudah dipakai akun lain.';
       } elseif ($uid === '' && $password === '') {
         $error = 'Password wajib diisi untuk akun baru.';
       } elseif ($uid === '' && $konfirmasi === '') {
@@ -69,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       pesan($error, 'gagal');
     } elseif ($uid !== '') {
       jalankan(
-        "UPDATE users SET nip=?, nama=?, email=?, no_hp=?, alamat=?, jabatan=?, role=? WHERE id=?",
-        array($nip, $nama, $email, $no_hp, $alamat, $jabatan, $role, $uid)
+        "UPDATE users SET nip=?, nama=?, email=?, no_hp=?, alamat=?, role=? WHERE id=?",
+        array($nip, $nama, $email, $no_hp, $alamat, $role, $uid)
       );
       if ($password !== '') {
         jalankan("UPDATE users SET password=? WHERE id=?", array(password_hash($password, PASSWORD_DEFAULT), $uid));
@@ -78,8 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       pesan('Data akun diperbarui.');
     } else {
       jalankan(
-        "INSERT INTO users (id, nip, nama, email, no_hp, alamat, jabatan, role, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        array(buat_id(), $nip, $nama, $email, $no_hp, $alamat, $jabatan, $role, password_hash($password, PASSWORD_DEFAULT))
+        "INSERT INTO users (id, nip, nama, email, no_hp, alamat, role, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        array(buat_id(), $nip, $nama, $email, $no_hp, $alamat, $role, password_hash($password, PASSWORD_DEFAULT))
       );
       pesan('Akun ditambahkan.');
     }
@@ -98,7 +99,6 @@ $nilai = array(
   'email' => '',
   'no_hp' => '',
   'alamat' => '',
-  'jabatan' => '',
   'role' => 'karyawan'
 );
 if ($edit) {
@@ -127,7 +127,6 @@ top('Data Karyawan');
       <?php isian('Nama Lengkap', 'nama', 'text', $nilai['nama'], 'required'); ?>
       <?php isian('Email Kantor / Pribadi', 'email', 'email', $nilai['email'], 'required'); ?>
       <?php isian('Nomor HP', 'no_hp', 'number', $nilai['no_hp'], 'data-nomor min="0" inputmode="numeric"'); ?>
-      <?php isian('Jabatan / Posisi', 'jabatan', 'text', $nilai['jabatan'], 'placeholder="Contoh: Staff Operasional / Web Developer"'); ?>
 
       <div class="mb-3">
         <label class="label">Alamat</label>
@@ -147,8 +146,8 @@ top('Data Karyawan');
   </div>
   <div class="lg:col-span-2">
     <?php kartu_awal('Daftar Akun Pengguna'); ?>
-    <input id="cari" class="kolom mb-3 text-xs" placeholder="Cari nama, NIP, atau jabatan...">
-    <?php tabel_awal(array('Karyawan', 'Jabatan / Posisi', 'Peran', 'Aksi'), 'tabel-cari'); ?>
+    <input id="cari" class="kolom mb-3 text-xs" placeholder="Cari nama atau NIP...">
+    <?php tabel_awal(array('Karyawan', 'Peran', 'Aksi'), 'tabel-cari'); ?>
     <?php foreach ($semua as $r):
       $boleh_hapus = (alasan_tidak_boleh_hapus($r) === '');
     ?>
@@ -162,17 +161,14 @@ top('Data Karyawan');
             </div>
           </div>
         </td>
-        <td data-label="Jabatan / Posisi" class="text-xs">
-          <span class="font-medium text-stone-800"><?= e($r['jabatan'] ?: 'Staf') ?></span>
-        </td>
         <td data-label="Peran">
-          <span class="inline-block rounded px-2 py-0.5 text-xs font-semibold <?= $r['role'] === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-stone-100 text-stone-700' ?>">
+          <span class="text-xs font-semibold text-black">
             <?= e(nama_peran($r['role'])) ?>
           </span>
         </td>
         <td data-label="Aksi" class="whitespace-nowrap">
           <div class="flex gap-1">
-            <a href="?edit=<?= e($r['id']) ?>" class="btn btn-garis btn-kecil">Ubah</a>
+            <a href="?edit=<?= e($r['id']) ?>" class="btn btn-zinc btn-kecil">Ubah</a>
             <?php if ($boleh_hapus): ?>
               <form method="POST" data-konfirmasi="Hapus akun ini beserta seluruh datanya?">
                 <input type="hidden" name="aksi" value="hapus">

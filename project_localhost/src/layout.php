@@ -3,51 +3,29 @@
 //   ikon()       : ikon SVG garis
 //   top/bottom() : pembuka dan penutup halaman (sidebar, judul, pesan)
 //   kartu_*, tabel_*, isian*, pilih, avatar, ... : potongan tampilan kecil
-//
-// Semua gaya memakai Tailwind (utility class dan @apply di fungsi gaya()), tanpa file CSS terpisah.
-
-
-// ---------- Gaya: Tailwind via CDN + kelas komponen ----------
-
 function gaya()
 { ?>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script>
-    // Palet tambahan. Semuanya dibuat kalem agar status mudah dibaca tanpa terlihat mencolok.
-    //   danger : merah bata  (ditolak, hapus, error)
-    //   warn   : kuning tanah (menunggu, terlambat, draft)
-    //   info   : biru baja   (diproses, izin, diterbitkan)
-    //   ok     : hijau hutan (disetujui, hadir, selesai)
     tailwind.config = {
       theme: {
         extend: {
           colors: {
             danger: {
-              50: '#fdf2f1',
               100: '#fadfdc',
-              200: '#f2bdb7',
               600: '#b9332a',
               700: '#9f2a22',
               800: '#82221c'
             },
             warn: {
-              50: '#faf6ec',
-              100: '#f3ecd6',
-              200: '#e4d6aa',
-              700: '#76590f',
               800: '#5f470f'
             },
             info: {
-              50: '#f0f4f8',
               100: '#e1e9f1',
-              200: '#c3d3e3',
-              700: '#2f4f73',
               800: '#263f5b'
             },
             ok: {
-              50: '#f0f6f2',
               100: '#dfece3',
-              200: '#bdd6c5',
               700: '#2f6b41',
               800: '#26553a'
             }
@@ -56,20 +34,17 @@ function gaya()
       }
     };
   </script>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
   <style type="text/tailwindcss">
     @layer base {
-      body {
-        font-family: 'IBM Plex Sans', system-ui, sans-serif;
-      }
-
       input[type=number] {
         -moz-appearance: textfield;
+        appearance: textfield;
       }
 
       input[type=number]::-webkit-outer-spin-button,
       input[type=number]::-webkit-inner-spin-button {
         -webkit-appearance: none;
+        appearance: none;
         margin: 0;
       }
     }
@@ -94,7 +69,11 @@ function gaya()
       }
 
       .btn-bahaya {
-        @apply border border-danger-200 bg-white text-danger-700 hover:bg-danger-50;
+        @apply border border-danger-600 bg-danger-600 text-white hover:bg-danger-700;
+      }
+
+      .btn-zinc {
+        @apply border border-zinc-500 bg-zinc-500 text-white hover:bg-zinc-600;
       }
 
       .btn-kecil {
@@ -125,10 +104,6 @@ function gaya()
 
       .petak {
         @apply rounded-md border border-stone-200 bg-stone-50 p-3;
-      }
-
-      .kelompok {
-        @apply mb-3 rounded-md border border-stone-200 bg-stone-50 p-3;
       }
 
       /* Tabel. Di layar kecil (di bawah md) tiap baris menjadi kartu dan tiap sel
@@ -163,27 +138,21 @@ function gaya()
       }
 
       .lencana-netral {
-        @apply bg-stone-100 text-stone-700;
-      }
-
-      .lencana-sekunder {
-        @apply bg-slate-200 text-slate-800;
-      }
-
-      .lencana-peringatan {
-        @apply bg-warn-100 text-warn-800;
-      }
-
-      .lencana-info {
-        @apply bg-info-100 text-info-800;
+        @apply bg-stone-100 text-black;
       }
 
       .lencana-sukses {
-        @apply bg-ok-100 text-ok-800;
+        @apply bg-ok-700 text-white;
       }
 
-      .lencana-bahaya {
-        @apply bg-danger-100 text-danger-800;
+      /* Belum Absen: teks putih, latar merah */
+      .lencana-belum {
+        @apply bg-danger-600 text-white;
+      }
+
+      /* Status lain: teks putih, latar merah */
+      .lencana-lain {
+        @apply bg-danger-600 text-white;
       }
 
       /* Pesan dan pemberitahuan */
@@ -196,19 +165,19 @@ function gaya()
       }
 
       .notif-peringatan {
-        @apply bg-warn-50 text-warn-800;
+        @apply bg-yellow-100 text-warn-800;
       }
 
       .notif-info {
-        @apply bg-info-50 text-info-800;
+        @apply bg-info-100 text-info-800;
       }
 
       .notif-sukses {
-        @apply bg-ok-50 text-ok-800;
+        @apply bg-ok-100 text-ok-800;
       }
 
       .notif-bahaya {
-        @apply bg-danger-50 text-danger-800;
+        @apply bg-danger-100 text-danger-800;
       }
 
       /* Teks menu sidebar: memudar saat sidebar diciutkan (layar md ke atas) */
@@ -217,6 +186,10 @@ function gaya()
       }
 
       /* Tautan di dalam konten */
+      .tautan-dokumen {
+        @apply font-medium text-black underline underline-offset-2 transition-colors hover:text-blue-600;
+      }
+
       .tautan {
         @apply font-medium text-teal-700 underline underline-offset-2 hover:text-teal-900;
       }
@@ -225,7 +198,7 @@ function gaya()
 <?php }
 
 
-// ---------- Ikon SVG sederhana (bentuk garis) ----------
+// Ikon SVG sederhana (bentuk garis)
 
 function ikon($nama, $ukuran = 'h-5 w-5')
 {
@@ -238,18 +211,12 @@ function ikon($nama, $ukuran = 'h-5 w-5')
     'pengajuan' => '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
     'absensi' => '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
     'cuti' => '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/>',
-    'kalender' => '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
-    'payroll' => '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/>',
-    'departemen' => '<rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>',
-    'cetak' => '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/>',
     'keluar' => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
     'mata' => '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
     'mata-coret' => '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>',
-    'panel' => '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
     'menu' => '<line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>',
     'tutup' => '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
     'check' => '<polyline points="20 6 9 17 4 12"/>',
-    'kembali' => '<polyline points="15 18 9 12 15 6"/>',
     'peringatan' => '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
   );
 
@@ -259,7 +226,7 @@ function ikon($nama, $ukuran = 'h-5 w-5')
 }
 
 
-// ---------- Menu navigasi ----------
+// Menu navigasi 
 
 function menu_portal($admin)
 {
@@ -286,7 +253,7 @@ function menu_portal($admin)
 }
 
 
-// ---------- Pembuka dan penutup halaman ----------
+// Pembuka dan penutup halaman
 
 function top($judul)
 {
@@ -322,17 +289,17 @@ function top($judul)
 
 <body class="min-h-screen bg-stone-50 text-stone-800 md:flex print:bg-white">
 
-  <!-- bilah atas (cuma di HP) -->
+  <!-- Bilah atas (hanya di HP) -->
   <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 md:hidden print:hidden">
     <button type="button" id="buka-menu" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false" class="-ml-2 rounded-md p-2 text-stone-600 transition-colors hover:bg-stone-100"><?= ikon('menu') ?></button>
     <div class="flex items-center gap-2">
       <span class="text-lg font-semibold text-teal-700">MyHR</span>
-      <span class="lencana lencana-netral"><?= $admin ? 'Admin' : 'Karyawan' ?></span>
+      <span class="text-xs font-semibold text-black"><?= $admin ? 'Admin' : 'Karyawan' ?></span>
     </div>
     <div class="ml-auto"><?= avatar($u, 'h-8 w-8', 'text-sm') ?></div>
   </header>
 
-  <!-- lapisan gelap di belakang laci menu (HP) -->
+  <!-- Lapisan gelap di belakang laci menu (HP) -->
   <div id="lapisan-menu" class="pointer-events-none fixed inset-0 z-40 bg-stone-900/50 opacity-0 transition-opacity duration-300 md:hidden print:hidden"></div>
 
   <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col gap-4 bg-stone-900 p-3 text-stone-300 transition-[transform,width] duration-300 ease-out motion-reduce:transition-none md:sticky md:inset-y-auto md:top-0 md:z-auto md:h-screen md:translate-x-0 md:shrink-0 md:overflow-hidden md:group-data-[sidebar=tutup]:w-[4.5rem] print:hidden">
@@ -344,7 +311,7 @@ function top($judul)
           <span class="rounded bg-stone-800 px-2 py-0.5 text-xs text-stone-300"><?= $admin ? 'Portal Admin' : 'Portal Karyawan' ?></span>
         </div>
       </div>
-      <button type="button" id="tombol-sidebar" title="Ciutkan / lebarkan menu" aria-label="Ciutkan atau lebarkan menu" class="hidden rounded-md p-2 text-stone-400 transition-colors hover:bg-stone-800 hover:text-white md:block"><?= ikon('panel') ?></button>
+      <button type="button" id="tombol-sidebar" title="Ciutkan / lebarkan menu" aria-label="Ciutkan atau lebarkan menu" class="hidden rounded-md p-2 text-stone-400 transition-colors hover:bg-stone-800 hover:text-white md:block"><span class="md:group-data-[sidebar=tutup]:hidden"><?= ikon('tutup') ?></span><span class="hidden md:group-data-[sidebar=tutup]:block"><?= ikon('menu') ?></span></button>
       <button type="button" id="tutup-menu" aria-label="Tutup menu" class="rounded-md p-2 text-stone-400 transition-colors hover:bg-stone-800 hover:text-white md:hidden"><?= ikon('tutup') ?></button>
     </div>
 
@@ -402,7 +369,7 @@ function bottom()
 <?php }
 
 
-// ---------- Potongan tampilan yang sering dipakai ----------
+// Potongan tampilan yang sering dipakai
 
 function kartu_awal($judul, $ekstra_kelas = '')
 {
@@ -415,7 +382,6 @@ function kartu_akhir()
   echo '</section>';
 }
 
-// Petak angka ringkasan: label kecil di atas, nilai besar di bawah.
 // $kotak : kelas pembungkus ('kartu' atau 'petak text-center')
 // $url   : jika diisi, seluruh petak menjadi tautan
 function kartu_angka($label, $nilai, $warna = 'text-stone-900', $kotak = 'kartu', $url = '')
@@ -455,7 +421,7 @@ function tabel_akhir()
 }
 
 
-// ---------- Isian formulir ----------
+// Isian formulir
 
 function isian($label, $nama, $tipe = 'text', $nilai = '', $tambahan = '')
 {
@@ -497,7 +463,7 @@ function isian_login($label, $nama, $tipe = 'text', $nilai = '', $tambahan = '')
 }
 
 
-// ---------- Foto profil ----------
+// Foto profil
 
 function foto_url($u)
 {
@@ -525,7 +491,7 @@ function avatar($u, $ukuran = 'h-10 w-10', $teks = 'text-lg')
 }
 
 
-// ---------- Rangka halaman login (dipakai login.php, login_admin.php, login_karyawan.php) ----------
+// Rangka halaman login (dipakai login.php, login_admin.php, login_karyawan.php)
 
 function login_atas(string $judul_tab, string $judul_kiri, string $teks_kiri, string $teks_pesan = '', string $jenis_pesan = 'gagal'): void
 {
@@ -547,7 +513,7 @@ function login_atas(string $judul_tab, string $judul_kiri, string $teks_kiri, st
     <p class="text-2xl font-semibold text-teal-700">MyHR</p>
 
     <div class="relative my-6 min-h-[12rem] flex-1">
-      <img src="assets/hris.jpg" alt="Ilustrasi pengelolaan data karyawan di sistem HR" class="absolute inset-0 h-full w-full object-contain mix-blend-multiply">
+      <img src="assets/hris.webp" alt="Ilustrasi pengelolaan data karyawan di sistem HR" class="absolute inset-0 h-full w-full object-contain mix-blend-multiply">
     </div>
 
     <div class="max-w-md">
@@ -607,14 +573,6 @@ function form_login(string $peran, string $nip_isi = ''): void
             <a href="lupa_password.php" class="font-medium text-stone-700 hover:underline">Lupa password?</a>
           </p>
         <?php endif; ?>
-
-        <p class="mt-6 border-t border-stone-200 pt-4 text-center text-sm text-stone-500">
-          <?php if ($peran === 'admin'): ?>
-            Bukan admin? <a href="login_karyawan.php" class="font-medium text-stone-700 hover:underline">Masuk sebagai karyawan</a>
-          <?php else: ?>
-            Admin HR? <a href="login_admin.php" class="font-medium text-stone-700 hover:underline">Masuk sebagai admin</a>
-          <?php endif; ?>
-        </p>
       </div>
 <?php
 }

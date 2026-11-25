@@ -56,9 +56,9 @@ top('Persetujuan Cuti Karyawan');
 
 <!-- Ringkasan -->
 <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-  <?php kartu_angka('Menunggu keputusan', $total_menunggu, 'text-warn-700'); ?>
-  <?php kartu_angka('Disetujui bulan ini', $total_disetujui_bulan_ini, 'text-ok-700'); ?>
-  <?php kartu_angka('Ditolak bulan ini', $total_ditolak_bulan_ini, 'text-danger-700'); ?>
+  <?php kartu_angka('Menunggu keputusan', $total_menunggu, 'text-black'); ?>
+  <?php kartu_angka('Disetujui bulan ini', $total_disetujui_bulan_ini, 'text-black'); ?>
+  <?php kartu_angka('Ditolak bulan ini', $total_ditolak_bulan_ini, 'text-black'); ?>
 </div>
 
 <!-- Filter status dan pencarian -->

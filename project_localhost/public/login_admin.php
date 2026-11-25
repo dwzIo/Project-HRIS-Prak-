@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isi('aksi') === 'login') {
 login_atas(
   'Masuk Admin',
   'Kelola data karyawan dengan rapi.',
-  'Verifikasi pengajuan, kelola absensi, cuti, dan payroll dari satu tempat.',
+  'Verifikasi pengajuan, kelola absensi dan cuti dari satu tempat.',
   $teks_pesan,
   $jenis_pesan
 );

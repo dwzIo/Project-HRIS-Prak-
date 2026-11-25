@@ -1,10 +1,5 @@
 "use strict";
 
-// Skrip kecil untuk semua halaman (JavaScript biasa, tanpa library).
-// Setiap fitur dibungkus fungsinya sendiri dan hanya aktif jika elemennya
-// ada di halaman yang sedang dibuka.
-
-
 // 1. Login <-> Daftar pada satu halaman (dua tampilan, bukan dua file)
 function aktifkanTabLogin() {
   const tombolTab = document.querySelectorAll("[data-tab]");
@@ -310,7 +305,7 @@ function aktifkanPotongFoto() {
 
 
 // 7. Sidebar
-//    - Layar lebar: tombol panel menciutkan sidebar menjadi hanya ikon
+//    - Layar lebar: tombol silang menciutkan sidebar menjadi hanya ikon (jadi garis tiga untuk melebarkan)
 //      (animasi lebar, pilihan diingat di browser)
 //    - HP: sidebar berupa laci yang meluncur dari kiri, dengan lapisan gelap di belakangnya
 function aktifkanSidebar() {

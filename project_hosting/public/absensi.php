@@ -39,22 +39,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($jam_menit_sekarang >= $jam_pulang_buka) {
       // Lewat jam pulang belum presensi, otomatis dicatat Alfa
       jalankan(
-        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan) VALUES (?, ?, ?, ?, 'Alfa', ?)",
-        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Dinyatakan Alfa: Jam kerja hari ini telah selesai (lewat jam pulang $jam_pulang_buka WIB)")
+        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan, schedule_id) VALUES (?, ?, ?, ?, 'Alfa', ?, ?)",
+        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Dinyatakan Alfa: Jam kerja hari ini telah selesai (lewat jam pulang $jam_pulang_buka WIB)", $jk_aktif['id'])
       );
       pesan("Jam kerja kantor hari ini telah selesai (lewat jam pulang $jam_pulang_buka WIB). Anda dinyatakan Alfa (tidak hadir).", 'gagal');
     } elseif ($jam_menit_sekarang > $jam_masuk_tepat) {
       // Lewat jam reguler (misal lewat 08:30) sampai sebelum jam pulang = Terlambat
       jalankan(
-        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan) VALUES (?, ?, ?, ?, 'Terlambat', ?)",
-        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Terlambat masuk kerja pada pukul $waktu_sekarang WIB (melewati jam reguler $jam_masuk_tepat WIB)")
+        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan, schedule_id) VALUES (?, ?, ?, ?, 'Terlambat', ?, ?)",
+        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Terlambat masuk kerja pada pukul $waktu_sekarang WIB (melewati jam reguler $jam_masuk_tepat WIB)", $jk_aktif['id'])
       );
       pesan("Absen masuk berhasil dicatat. Status: Terlambat (pukul $waktu_sekarang WIB).");
     } else {
       // Jam reguler tepat waktu
       jalankan(
-        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan) VALUES (?, ?, ?, ?, 'Hadir', ?)",
-        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Hadir tepat waktu ($waktu_sekarang WIB)")
+        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan, schedule_id) VALUES (?, ?, ?, ?, 'Hadir', ?, ?)",
+        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Hadir tepat waktu ($waktu_sekarang WIB)", $jk_aktif['id'])
       );
       pesan("Berhasil absen masuk pada pukul $waktu_sekarang WIB (Hadir tepat waktu).");
     }
@@ -103,8 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         pesan($error_upload, 'gagal');
       } else {
         jalankan(
-          "INSERT INTO attendances (id, user_id, tanggal, status, catatan, bukti) VALUES (?, ?, ?, ?, ?, ?)",
-          array(buat_id(), $id, $hari_ini, $status_pilih, $alasan, $nama_file)
+          "INSERT INTO attendances (id, user_id, tanggal, status, catatan, bukti, schedule_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          array(buat_id(), $id, $hari_ini, $status_pilih, $alasan, $nama_file, $jk_aktif['id'])
         );
         pesan("Pemberitahuan $status_pilih hari ini berhasil disimpan beserta berkas bukti.");
       }
@@ -163,8 +163,7 @@ top('Absensi Kehadiran');
       <?php if (!$jk_aktif['ada_jadwal']): ?>
         <!-- Hari libur -->
         <div class="notif notif-peringatan my-2 text-center text-xs">
-          <span class="mx-auto mb-1 block w-fit"><?= ikon('kalender', 'h-6 w-6') ?></span>
-          <p class="font-semibold mt-0.5">Hari Libur / Tidak Ada Jam Kerja</p>
+          <p class="font-semibold">Hari Libur / Tidak Ada Jam Kerja</p>
           <p class="mt-1">Tidak ada jadwal presensi yang aktif untuk hari ini.</p>
         </div>
 
@@ -197,7 +196,7 @@ top('Absensi Kehadiran');
           <div class="notif notif-peringatan mb-3 text-left text-xs">
             Waktu telah melewati jam reguler (<strong><?= e($jam_masuk_tepat) ?> WIB</strong>). Anda akan tercatat dengan status <strong>Terlambat</strong>.
           </div>
-          <form method="POST"><?= csrf_field() ?>
+          <form method="POST">
             <input type="hidden" name="aksi" value="masuk">
             <button class="btn btn-utama w-full gap-2 py-2.5">
               <?= ikon('absensi') ?><span>Absen Masuk (Terlambat)</span>
@@ -210,7 +209,7 @@ top('Absensi Kehadiran');
           </div>
 
         <?php else: ?>
-          <form method="POST"><?= csrf_field() ?>
+          <form method="POST">
             <input type="hidden" name="aksi" value="masuk">
             <button class="btn btn-utama w-full gap-2 py-2.5">
               <?= ikon('absensi') ?><span>Absen Masuk Sekarang</span>
@@ -259,7 +258,7 @@ top('Absensi Kehadiran');
 
         <?php if (empty($absen_hari_ini['jam_pulang'])): ?>
           <?php if ($boleh_absen_pulang): ?>
-            <form method="POST"><?= csrf_field() ?>
+            <form method="POST">
               <input type="hidden" name="aksi" value="pulang">
               <button class="btn btn-sukses w-full gap-2 py-2.5">
                 <?= ikon('absensi') ?><span>Absen Pulang Sekarang</span>
@@ -283,7 +282,7 @@ top('Absensi Kehadiran');
 
     <?php if ($jk_aktif['ada_jadwal'] && !$absen_hari_ini): ?>
       <?php kartu_awal('Tidak Bisa Hadir / Izin Sakit'); ?>
-      <form method="POST" enctype="multipart/form-data" data-validasi novalidate><?= csrf_field() ?>
+      <form method="POST" enctype="multipart/form-data" data-validasi novalidate>
         <input type="hidden" name="aksi" value="izin_sakit">
         <?php pilih('Kategori', 'status', array('Sakit' => 'Sakit (Dengan Bukti / Surat Dokter)', 'Izin' => 'Izin Tidak Masuk')); ?>
 
@@ -326,11 +325,11 @@ top('Absensi Kehadiran');
       </div>
 
       <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <?php kartu_angka('Tepat Waktu', $total_hadir, 'text-ok-700', 'petak text-center'); ?>
-        <?php kartu_angka('Terlambat', $total_terlambat, 'text-warn-700', 'petak text-center'); ?>
-        <?php kartu_angka('Izin', $total_izin, 'text-info-700', 'petak text-center'); ?>
-        <?php kartu_angka('Sakit', $total_sakit, 'text-slate-700', 'petak text-center'); ?>
-        <?php kartu_angka('Alfa', $total_alfa, 'text-danger-700', 'petak text-center'); ?>
+        <?php kartu_angka('Tepat Waktu', $total_hadir, 'text-black', 'petak text-center'); ?>
+        <?php kartu_angka('Terlambat', $total_terlambat, 'text-black', 'petak text-center'); ?>
+        <?php kartu_angka('Izin', $total_izin, 'text-black', 'petak text-center'); ?>
+        <?php kartu_angka('Sakit', $total_sakit, 'text-black', 'petak text-center'); ?>
+        <?php kartu_angka('Alfa', $total_alfa, 'text-black', 'petak text-center'); ?>
       </div>
     </div>
 

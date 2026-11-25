@@ -1,11 +1,13 @@
 <?php
 session_start();
+// Sinkronisasi zona waktu resmi ke WIB (Waktu Indonesia Barat / UTC+7)
 date_default_timezone_set('Asia/Jakarta');
 
 include_once __DIR__ . "/koneksi.php";
-define('FOLDER_UPLOAD', __DIR__ . '/../uploads'); // lokasi asli folder upload di server
+define('FOLDER_UPLOAD', __DIR__ . '/../uploads');
 
-// ---------- fungsi bantu umum ----------
+// fungsi bantu umum 
+
 function e($teks)
 {
   return htmlspecialchars((string)$teks, ENT_QUOTES, 'UTF-8');
@@ -35,7 +37,7 @@ function pindah($url)
 function wajib_login()
 {
   if (!isset($_SESSION['login'])) {
-    pindah('login.php'); // halaman pilih peran (admin / karyawan)
+    pindah('login.php');
   }
 }
 
@@ -51,8 +53,6 @@ function url_login(string $peran = ''): string
   return 'login.php';
 }
 
-// Memproses formulir login untuk SATU peran saja ('admin' atau 'karyawan').
-// Mengembalikan teks error, atau langsung pindah ke dashboard jika berhasil.
 function proses_login(string $peran_halaman): string
 {
   $nip = trim(isi('nip'));
@@ -62,10 +62,7 @@ function proses_login(string $peran_halaman): string
     return 'NIP atau password salah.';
   }
   if ($user['role'] !== $peran_halaman) {
-    if ($peran_halaman === 'admin') {
-      return 'Akun ini bukan akun admin. Silakan masuk lewat halaman login karyawan.';
-    }
-    return 'Akun ini adalah akun admin. Silakan masuk lewat halaman login admin.';
+    return 'NIP atau password salah.';
   }
 
   session_regenerate_id(true);
@@ -119,12 +116,7 @@ function wajib_karyawan()
   }
 }
 
-// Helper format rupiah & nama bulan
-function rupiah($angka)
-{
-  return 'Rp ' . number_format((float)$angka, 0, ',', '.');
-}
-
+// Helper nama bulan
 function nama_bulan($bln)
 {
   $daftar = array(
@@ -144,16 +136,14 @@ function nama_bulan($bln)
   return isset($daftar[(int)$bln]) ? $daftar[(int)$bln] : (string)$bln;
 }
 
-// Ambil & Simpan Pengaturan Sistem (Jam Kerja, dll)
-function ambil_pengaturan($kunci, $default = '')
+// jam kerja yang BERLAKU selalu berasal dari tabel work_schedules (lewat ambil_jam_kerja).
+function jam_kerja_standar()
 {
-  $r = satu("SELECT nilai FROM settings WHERE kunci=?", array($kunci));
-  return $r ? $r['nilai'] : $default;
-}
-
-function simpan_pengaturan($kunci, $nilai)
-{
-  jalankan("INSERT OR REPLACE INTO settings (kunci, nilai) VALUES (?, ?)", array($kunci, (string)$nilai));
+  return array(
+    'jam_masuk_buka'  => '08:00',
+    'jam_masuk_tepat' => '08:30',
+    'jam_pulang_buka' => '17:00',
+  );
 }
 
 // Ambil Jam Kerja yang berlaku pada tanggal tertentu:
@@ -227,8 +217,8 @@ function sinkron_alfa_otomatis()
       $ada = satu("SELECT id FROM attendances WHERE user_id=? AND tanggal=?", array($k['id'], $hari_ini));
       if (!$ada) {
         jalankan(
-          "INSERT INTO attendances (id, user_id, tanggal, status, catatan) VALUES (?, ?, ?, 'Alfa', ?)",
-          array(buat_id(), $k['id'], $hari_ini, "Otomatis Alfa: Tidak melakukan presensi hingga jam pulang ($jam_pulang WIB)")
+          "INSERT INTO attendances (id, user_id, tanggal, status, catatan, schedule_id) VALUES (?, ?, ?, 'Alfa', ?, ?)",
+          array(buat_id(), $k['id'], $hari_ini, "Otomatis Alfa: Tidak melakukan presensi hingga jam pulang ($jam_pulang WIB)", $jk['id'])
         );
       }
     }
@@ -259,7 +249,8 @@ function ambil_pesan()
   return $p;
 }
 
-// ---------- database (PDO + prepared statement) ----------
+// database (PDO + prepared statement)
+
 function jalankan($sql, $parameter = array())
 {
   global $konek;
@@ -284,7 +275,7 @@ function angka($sql, $parameter = array())
   return (int) jalankan($sql, $parameter)->fetchColumn();
 }
 
-// ---------- upload file ----------
+// upload file
 function ada_file($nama)
 {
   return isset($_FILES[$nama]) && $_FILES[$nama]['error'] !== UPLOAD_ERR_NO_FILE;
@@ -319,26 +310,16 @@ function upload($nama, $folder, $ekstensi, $maks_mb)
   return array($nama_baru, null);
 }
 
-// Label status berwarna (mendukung status dasar, absensi, cuti, dan payroll).
-// Kelas warna (lencana-*) didefinisikan di src/layout.php.
+// Label status berwarna: hijau untuk status berhasil, merah untuk "Belum Absen"
+// dan status lainnya. Kelas warna (lencana-*) didefinisikan di src/layout.php.
 function lencana($status)
 {
-  $jenis = 'netral';
-
-  if (in_array($status, array('Menunggu', 'Terlambat', 'Draft'))) {
-    $jenis = 'peringatan';
-  }
-  if (in_array($status, array('Diproses', 'Izin', 'Diterbitkan'))) {
-    $jenis = 'info';
-  }
-  if ($status === 'Sakit') {
-    $jenis = 'sekunder';
-  }
-  if (in_array($status, array('Disetujui', 'Selesai', 'Terverifikasi', 'Hadir', 'Dibayar', 'Aktif'))) {
+  if (in_array($status, array('Disetujui', 'Selesai', 'Terverifikasi', 'Hadir', 'Aktif'))) {
     $jenis = 'sukses';
-  }
-  if (in_array($status, array('Ditolak', 'Perlu Diperbarui', 'Alfa', 'Kedaluwarsa'))) {
-    $jenis = 'bahaya';
+  } elseif ($status === 'Belum Absen') {
+    $jenis = 'belum';
+  } else {
+    $jenis = 'lain';
   }
 
   return '<span class="lencana lencana-' . $jenis . '">' . e($status) . '</span>';

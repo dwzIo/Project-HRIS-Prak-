@@ -92,7 +92,7 @@ top('Pengajuan Cuti Karyawan');
 <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
   <?php kartu_angka('Hak cuti tahunan (' . $tahun_ini . ')', $kuota_tahunan . ' Hari'); ?>
   <?php kartu_angka('Cuti terpakai', $terpakai . ' Hari'); ?>
-  <?php kartu_angka('Sisa kuota cuti', $sisa_cuti . ' Hari', 'text-teal-700'); ?>
+  <?php kartu_angka('Sisa kuota cuti', $sisa_cuti . ' Hari', 'text-black'); ?>
 </div>
 
 <div class="grid gap-6 lg:grid-cols-3">
@@ -100,7 +100,7 @@ top('Pengajuan Cuti Karyawan');
   <!-- Formulir pengajuan cuti -->
   <div class="lg:col-span-1">
     <?php kartu_awal('Ajukan Cuti Baru'); ?>
-    <form method="POST" enctype="multipart/form-data" data-validasi novalidate><?= csrf_field() ?>
+    <form method="POST" enctype="multipart/form-data" data-validasi novalidate>
       <input type="hidden" name="aksi" value="ajukan">
 
       <?php pilih('Jenis Cuti', 'jenis_cuti', array(
@@ -164,7 +164,7 @@ top('Pengajuan Cuti Karyawan');
           <td data-label="Catatan HR" class="text-xs text-stone-500"><?= e($c['catatan_admin'] ?: '-') ?></td>
           <td data-label="Aksi" class="whitespace-nowrap">
             <?php if ($c['status'] === 'Menunggu'): ?>
-              <form method="POST" data-konfirmasi="Batalkan permohonan cuti ini?"><?= csrf_field() ?>
+              <form method="POST" data-konfirmasi="Batalkan permohonan cuti ini?">
                 <input type="hidden" name="aksi" value="batal">
                 <input type="hidden" name="id" value="<?= e($c['id']) ?>">
                 <button class="btn btn-bahaya btn-kecil">Batalkan</button>

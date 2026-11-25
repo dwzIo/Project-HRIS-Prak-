@@ -28,7 +28,7 @@ top('Surat keterangan');
   <!-- Form permintaan -->
   <div>
     <?php kartu_awal('Minta surat baru'); ?>
-    <form method="POST" data-validasi novalidate><?= csrf_field() ?>
+    <form method="POST" data-validasi novalidate>
       <?php pilih('Jenis surat', 'jenis', array_combine($jenis_surat, $jenis_surat)); ?>
 
       <div class="mb-4">

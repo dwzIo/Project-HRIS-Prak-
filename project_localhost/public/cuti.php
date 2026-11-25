@@ -92,7 +92,7 @@ top('Pengajuan Cuti Karyawan');
 <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
   <?php kartu_angka('Hak cuti tahunan (' . $tahun_ini . ')', $kuota_tahunan . ' Hari'); ?>
   <?php kartu_angka('Cuti terpakai', $terpakai . ' Hari'); ?>
-  <?php kartu_angka('Sisa kuota cuti', $sisa_cuti . ' Hari', 'text-teal-700'); ?>
+  <?php kartu_angka('Sisa kuota cuti', $sisa_cuti . ' Hari', 'text-black'); ?>
 </div>
 
 <div class="grid gap-6 lg:grid-cols-3">

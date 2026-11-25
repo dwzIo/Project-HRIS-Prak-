@@ -4,27 +4,10 @@ include __DIR__ . "/../src/layout.php";
 wajib_admin();
 
 // Helper & fallback bila belum terdefinisi di src/auth.php
-if (!function_exists('ambil_pengaturan_jam_kerja')) {
-  function ambil_pengaturan_jam_kerja()
-  {
-    return array(
-      'jam_masuk_buka'  => ambil_pengaturan('jam_masuk_buka', '08:00'),
-      'jam_masuk_tepat' => ambil_pengaturan('jam_masuk_tepat', '08:30'),
-      'jam_pulang_buka' => ambil_pengaturan('jam_pulang_buka', '17:00'),
-    );
-  }
-}
 if (!function_exists('semua')) {
   function semua($sql, $param = array())
   {
     return daftar($sql, $param);
-  }
-}
-if (!function_exists('kembali')) {
-  function kembali()
-  {
-    $ref = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'admin_absensi.php';
-    pindah($ref);
   }
 }
 
@@ -49,42 +32,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       pesan('Jam mulai presensi harus lebih awal daripada batas jam reguler tepat waktu.', 'gagal');
     } elseif ($jam_masuk_tepat >= $jam_pulang_buka) {
       pesan('Batas jam tepat waktu harus lebih awal daripada jam pulang kerja.', 'gagal');
-    } elseif ($tanggal_mulai !== '' && $tanggal_selesai !== '' && $tanggal_mulai > $tanggal_selesai) {
+    } elseif ($tanggal_mulai === '' || $tanggal_selesai === '') {
+      pesan('Tanggal mulai dan tanggal selesai berlaku wajib diisi. Jam kerja hanya berlaku pada rentang tanggal yang diatur.', 'gagal');
+    } elseif ($tanggal_mulai > $tanggal_selesai) {
       pesan('Tanggal mulai tidak boleh lebih besar dari tanggal selesai.', 'gagal');
     } else {
-      // 1. Simpan sebagai default permanen di tabel settings
-      simpan_pengaturan('jam_masuk_buka', $jam_masuk_buka);
-      simpan_pengaturan('jam_masuk_tepat', $jam_masuk_tepat);
-      simpan_pengaturan('jam_pulang_buka', $jam_pulang_buka);
+      // work_schedules adalah satu-satunya sumber jam kerja.
+      // Jadwal yang rentangnya bertabrakan digantikan oleh jadwal baru. Absensi lama tetap utuh
+      // (schedule_id miliknya otomatis menjadi NULL lewat ON DELETE SET NULL).
+      jalankan("DELETE FROM work_schedules WHERE tanggal_mulai <= ? AND tanggal_selesai >= ?", array($tanggal_selesai, $tanggal_mulai));
 
-      // 2. Simpan rentang tanggal jika ditentukan
-      if ($tanggal_mulai !== '' && $tanggal_selesai !== '') {
-        // Bersihkan jadwal lama agar data tidak menumpuk dan tidak redundan
-        jalankan("DELETE FROM work_schedules WHERE (tanggal_mulai <= ? AND tanggal_selesai >= ?) OR created_at < datetime('now', '-30 days')", array($tanggal_selesai, $tanggal_mulai));
-
-        jalankan(
-          "INSERT INTO work_schedules (id, nama, tanggal_mulai, tanggal_selesai, jam_masuk_buka, jam_masuk_tepat, jam_pulang_buka) VALUES (?, 'Jadwal Kerja', ?, ?, ?, ?, ?)",
-          array(buat_id(), $tanggal_mulai, $tanggal_selesai, $jam_masuk_buka, $jam_masuk_tepat, $jam_pulang_buka)
-        );
-        pesan("Pengaturan jam kerja berhasil disimpan untuk rentang " . tgl($tanggal_mulai) . " s/d " . tgl($tanggal_selesai) . ". Berlaku otomatis setiap hari tanpa perlu diatur ulang.");
-      } else {
-        pesan("Jam kerja default berhasil disimpan ($jam_masuk_buka - $jam_masuk_tepat WIB, pulang $jam_pulang_buka WIB) dan berlaku permanen seterusnya.");
-      }
+      jalankan(
+        "INSERT INTO work_schedules (id, nama, tanggal_mulai, tanggal_selesai, jam_masuk_buka, jam_masuk_tepat, jam_pulang_buka) VALUES (?, 'Jadwal Kerja', ?, ?, ?, ?, ?)",
+        array(buat_id(), $tanggal_mulai, $tanggal_selesai, $jam_masuk_buka, $jam_masuk_tepat, $jam_pulang_buka)
+      );
+      pesan("Pengaturan jam kerja berhasil disimpan untuk rentang " . tgl($tanggal_mulai) . " s/d " . tgl($tanggal_selesai) . ". Berlaku otomatis setiap hari tanpa perlu diatur ulang.");
     }
 
     // Reset Jam Kerja Kembali ke Standar Default (08:00 - 08:30 WIB | Pulang 17:00 WIB)
   } elseif ($aksi === 'reset_jam_standar') {
-    simpan_pengaturan('jam_masuk_buka', '08:00');
-    simpan_pengaturan('jam_masuk_tepat', '08:30');
-    simpan_pengaturan('jam_pulang_buka', '17:00');
-    jalankan("DELETE FROM work_schedules");
-    pesan('Jam kerja berhasil dikembalikan ke standar awal: Masuk 08:00 - 08:30 WIB (Pulang 17:00 WIB).');
+    // Ubah jam pada jadwal yang masih berjalan / akan datang ke standar. Rentang tanggal & riwayat tidak dihapus.
+    $std = jam_kerja_standar();
+    jalankan(
+      "UPDATE work_schedules SET jam_masuk_buka=?, jam_masuk_tepat=?, jam_pulang_buka=? WHERE tanggal_selesai >= ?",
+      array($std['jam_masuk_buka'], $std['jam_masuk_tepat'], $std['jam_pulang_buka'], date('Y-m-d'))
+    );
+    pesan('Jam kerja pada jadwal yang sedang/akan berjalan dikembalikan ke standar: Masuk 08:00 - 08:30 WIB (Pulang 17:00 WIB).');
 
     // Hapus Jadwal Rentang Khusus
   } elseif ($aksi === 'hapus_jadwal_rentang') {
     $id_jadwal = isi('id');
     jalankan("DELETE FROM work_schedules WHERE id=?", array($id_jadwal));
-    pesan('Rentang tanggal khusus dihapus. Jam kerja kembali ke standar default.');
+    pesan('Jadwal dihapus. Tanggal pada rentang tersebut tidak lagi memiliki jam kerja (dianggap libur).');
 
     // Input / Koreksi Manual Absensi
   } elseif ($aksi === 'simpan_manual') {
@@ -122,8 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           pesan('Data absensi berhasil diperbarui.');
         } else {
           jalankan(
-            "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, jam_pulang, status, catatan, bukti) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            array(buat_id(), $user_id, $tgl_absen, $jam_masuk ?: null, $jam_pulang ?: null, $status, $catatan, $nama_file)
+            "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, jam_pulang, status, catatan, bukti, schedule_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            array(buat_id(), $user_id, $tgl_absen, $jam_masuk ?: null, $jam_pulang ?: null, $status, $catatan, $nama_file, ambil_jam_kerja($tgl_absen)['id'])
           );
           pesan('Data absensi manual berhasil ditambahkan.');
         }
@@ -154,9 +133,10 @@ if (!$jadwal_aktif_rentang) {
 }
 
 // Nilai input form awal
-$val_masuk_buka = $jadwal_aktif_rentang ? $jadwal_aktif_rentang['jam_masuk_buka'] : ambil_pengaturan('jam_masuk_buka', '08:00');
-$val_masuk_tepat = $jadwal_aktif_rentang ? $jadwal_aktif_rentang['jam_masuk_tepat'] : ambil_pengaturan('jam_masuk_tepat', '08:30');
-$val_pulang_buka = $jadwal_aktif_rentang ? $jadwal_aktif_rentang['jam_pulang_buka'] : ambil_pengaturan('jam_pulang_buka', '17:00');
+$jam_std = jam_kerja_standar();
+$val_masuk_buka = $jadwal_aktif_rentang ? $jadwal_aktif_rentang['jam_masuk_buka'] : $jam_std['jam_masuk_buka'];
+$val_masuk_tepat = $jadwal_aktif_rentang ? $jadwal_aktif_rentang['jam_masuk_tepat'] : $jam_std['jam_masuk_tepat'];
+$val_pulang_buka = $jadwal_aktif_rentang ? $jadwal_aktif_rentang['jam_pulang_buka'] : $jam_std['jam_pulang_buka'];
 $val_tgl_mulai = $jadwal_aktif_rentang ? $jadwal_aktif_rentang['tanggal_mulai'] : $hari_ini;
 $val_tgl_selesai = $jadwal_aktif_rentang ? $jadwal_aktif_rentang['tanggal_selesai'] : date('Y-m-d', strtotime('+1 month'));
 
@@ -170,7 +150,6 @@ $sql_karyawan = "
     u.id AS user_id, 
     u.nip, 
     u.nama, 
-    u.jabatan,
     a.id, 
     a.jam_masuk, 
     a.jam_pulang, 
@@ -231,17 +210,17 @@ top('Rekap & Monitoring Absensi Karyawan');
 ?>
 
 <!-- Form Tunggal Pengaturan Jam Kerja & Jadwal Presensi -->
-<div class="kartu border-l-4 border-l-teal-600 mb-6">
+<div class="kartu mb-6">
   <div class="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 pb-3">
     <div>
       <h2 class="text-base font-semibold text-stone-800">Atur Jam Kerja Kantor & Rentang Tanggal</h2>
       <p class="text-xs text-stone-500">Atur batas presensi harian dan tentukan rentang tanggal berlakunya sekaligus dalam satu form praktis.</p>
     </div>
     <div class="flex items-center gap-2">
-      <span class="rounded bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-800 border border-teal-200">
+      <span class="rounded bg-stone-100 px-2.5 py-1 text-xs font-medium text-black border border-stone-300">
         Zona Waktu: WIB (Asia/Jakarta)
       </span>
-      <form method="POST" data-konfirmasi="Kembalikan jam kerja ke standar awal (08:00 - 08:30 WIB | Pulang 17:00 WIB)?" class="inline">
+      <form method="POST" data-konfirmasi="Kembalikan jam pada jadwal yang sedang/akan berjalan ke standar (08:00 - 08:30 WIB | Pulang 17:00 WIB)?" class="inline">
         <input type="hidden" name="aksi" value="reset_jam_standar">
         <button type="submit" class="btn btn-garis btn-kecil text-stone-600 hover:text-stone-800" title="Kembalikan ke standar bawaan">
           Reset Default Standar
@@ -263,12 +242,12 @@ top('Rekap & Monitoring Absensi Karyawan');
       <div>
         <label class="label">2. Batas Tepat Waktu (Reguler)</label>
         <input type="time" name="jam_masuk_tepat" value="<?= e($val_masuk_tepat) ?>" class="kolom text-sm" required>
-        <p class="mt-1 text-[11px] font-medium text-amber-700">Lewat jam ini = Dihitung Terlambat</p>
+        <p class="mt-1 text-[11px] font-medium text-black">Lewat jam ini = Dihitung Terlambat</p>
       </div>
       <div>
         <label class="label">3. Jam Pulang Kerja</label>
         <input type="time" name="jam_pulang_buka" value="<?= e($val_pulang_buka) ?>" class="kolom text-sm" required>
-        <p class="mt-1 text-[11px] font-medium text-danger-700">Tidak absen hingga jam ini = Otomatis Alfa</p>
+        <p class="mt-1 text-[11px] font-medium text-black">Tidak absen hingga jam ini = Otomatis Alfa</p>
       </div>
     </div>
 
@@ -277,12 +256,12 @@ top('Rekap & Monitoring Absensi Karyawan');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
         <div>
           <label class="label">Tanggal Mulai Berlaku</label>
-          <input type="date" name="tanggal_mulai" value="<?= e($val_tgl_mulai) ?>" class="kolom text-sm">
+          <input type="date" name="tanggal_mulai" value="<?= e($val_tgl_mulai) ?>" class="kolom text-sm" required>
           <p class="mt-1 text-[11px] text-stone-400">Tanggal awal jam kerja ini mulai aktif</p>
         </div>
         <div>
           <label class="label">Tanggal Selesai Berlaku</label>
-          <input type="date" name="tanggal_selesai" value="<?= e($val_tgl_selesai) ?>" class="kolom text-sm">
+          <input type="date" name="tanggal_selesai" value="<?= e($val_tgl_selesai) ?>" class="kolom text-sm" required>
           <p class="mt-1 text-[11px] text-stone-400">Pilih rentang (misal 1 bulan / 1 tahun)</p>
         </div>
       </div>
@@ -290,7 +269,7 @@ top('Rekap & Monitoring Absensi Karyawan');
         <button type="submit" class="btn btn-utama w-full sm:w-auto h-[42px] px-6 flex items-center justify-center gap-2">
           <?= ikon('check') ?> Simpan Jam Kerja
         </button>
-        <p class="mt-1 text-[11px] text-teal-700 font-medium text-center sm:text-right">✓ Berlaku otomatis, tidak perlu diatur tiap hari</p>
+        <p class="mt-1 text-[11px] text-black font-medium text-center sm:text-right">✓ Berlaku otomatis, tidak perlu diatur tiap hari</p>
       </div>
     </div>
   </form>
@@ -301,10 +280,10 @@ top('Rekap & Monitoring Absensi Karyawan');
         Rentang tersimpan: <strong><?= tgl($jadwal_aktif_rentang['tanggal_mulai']) ?> s/d <?= tgl($jadwal_aktif_rentang['tanggal_selesai']) ?></strong>
         (Masuk: <?= e($jadwal_aktif_rentang['jam_masuk_buka']) ?> - <?= e($jadwal_aktif_rentang['jam_masuk_tepat']) ?> WIB, Pulang: <?= e($jadwal_aktif_rentang['jam_pulang_buka']) ?> WIB)
       </span>
-      <form method="POST" data-konfirmasi="Hapus rentang ini dan gunakan jam reguler default?" class="inline">
+      <form method="POST" data-konfirmasi="Hapus jadwal ini? Tanggal pada rentang tersebut akan dianggap libur (tanpa presensi)." class="inline">
         <input type="hidden" name="aksi" value="hapus_jadwal_rentang">
         <input type="hidden" name="id" value="<?= e($jadwal_aktif_rentang['id']) ?>">
-        <button class="text-danger-700 underline hover:text-danger-800 font-medium">Hapus Rentang</button>
+        <button class="text-black underline hover:text-black font-medium">Hapus Rentang</button>
       </form>
     </div>
   <?php endif; ?>
@@ -318,11 +297,11 @@ top('Rekap & Monitoring Absensi Karyawan');
     <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
       <span class="text-stone-500">Status jadwal tanggal ini:</span>
       <?php if ($jk_aktif_pilih['ada_jadwal']): ?>
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-0.5 font-semibold text-teal-800 border border-teal-200">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 font-semibold text-black border border-stone-300">
           <?= e($jk_aktif_pilih['nama']) ?>: <strong><?= e($jk_aktif_pilih['jam_masuk_buka']) ?> - <?= e($jk_aktif_pilih['jam_masuk_tepat']) ?> WIB</strong> (Pulang <?= e($jk_aktif_pilih['jam_pulang_buka']) ?> WIB)
         </span>
       <?php else: ?>
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 font-semibold text-amber-900 border border-amber-300">
+        <span class="font-semibold text-black">
           <?= e($jk_aktif_pilih['pesan']) ?>
         </span>
       <?php endif; ?>
@@ -354,11 +333,11 @@ top('Rekap & Monitoring Absensi Karyawan');
   </div>
 
   <?php if (!$jk_aktif_pilih['ada_jadwal']): ?>
-    <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900 flex items-start gap-3 shadow-sm">
-      <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white font-bold text-xs mt-0.5">!</span>
+    <div class="mt-4 rounded-lg bg-yellow-100 p-3.5 text-xs text-black flex items-start gap-3 shadow-sm">
+      <span class="mt-0.5 text-warn-800"><?= ikon('peringatan', 'h-5 w-5') ?></span>
       <div>
-        <p class="font-bold text-amber-950 text-xs sm:text-sm">Pengumuman: Tidak ada jam kerja pada tanggal tersebut</p>
-        <p class="text-amber-800 mt-0.5">Tanggal <strong><?= tgl($tanggal_pilih) ?></strong> tidak disetting jadwal presensi (hari libur atau di luar rentang jam kerja). Tidak ada kewajiban presensi kehadiran dan otomatisasi status Alfa dinonaktifkan untuk tanggal ini.</p>
+        <p class="font-bold text-black text-xs sm:text-sm">Pengumuman: Tidak ada jam kerja pada tanggal tersebut</p>
+        <p class="text-black mt-0.5">Tanggal <strong><?= tgl($tanggal_pilih) ?></strong> tidak disetting jadwal presensi (hari libur atau di luar rentang jam kerja). Tidak ada kewajiban presensi kehadiran dan otomatisasi status Alfa dinonaktifkan untuk tanggal ini.</p>
       </div>
     </div>
   <?php endif; ?>
@@ -372,19 +351,19 @@ top('Rekap & Monitoring Absensi Karyawan');
   </div>
   <div class="kartu text-center">
     <p class="text-xs text-stone-500">Hadir Tepat Waktu</p>
-    <p class="text-2xl font-bold text-teal-700"><?= $total_hadir ?></p>
+    <p class="text-2xl font-bold text-black"><?= $total_hadir ?></p>
   </div>
   <div class="kartu text-center">
     <p class="text-xs text-stone-500">Terlambat</p>
-    <p class="text-2xl font-bold text-amber-600"><?= $total_terlambat ?></p>
+    <p class="text-2xl font-bold text-black"><?= $total_terlambat ?></p>
   </div>
   <div class="kartu text-center">
     <p class="text-xs text-stone-500">Izin / Sakit</p>
-    <p class="text-2xl font-bold text-sky-700"><?= $total_izin_sakit ?></p>
+    <p class="text-2xl font-bold text-black"><?= $total_izin_sakit ?></p>
   </div>
   <div class="kartu text-center">
     <p class="text-xs text-stone-500">Alfa (Tidak Hadir)</p>
-    <p class="text-2xl font-bold text-danger-700"><?= $total_alfa ?></p>
+    <p class="text-2xl font-bold text-black"><?= $total_alfa ?></p>
   </div>
 </div>
 
@@ -443,12 +422,12 @@ top('Rekap & Monitoring Absensi Karyawan');
                 <p class="text-[11px] text-stone-600 mt-0.5"><?= e($row['catatan']) ?></p>
               <?php endif; ?>
               <?php if (!empty($row['bukti'])): ?>
-                <a href="unduh.php?jenis=bukti_absensi&id=<?= e($row['id']) ?>&unduh=1" class="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 underline">
+                <a href="unduh.php?jenis=bukti_absensi&id=<?= e($row['id']) ?>&unduh=1" class="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-black underline">
                   Lihat Surat / Bukti
                 </a>
               <?php endif; ?>
             <?php else: ?>
-              <span class="inline-block rounded px-2 py-0.5 text-xs font-medium bg-stone-100 text-stone-600">Belum Absen</span>
+              <?= lencana('Belum Absen') ?>
             <?php endif; ?>
           </td>
           <td data-label="Aksi" class="whitespace-nowrap">

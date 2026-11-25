@@ -3,6 +3,7 @@ include __DIR__ . "/../src/auth.php";
 include __DIR__ . "/../src/layout.php";
 wajib_karyawan();
 
+// Pastikan sinkron ke WIB (Asia/Jakarta)
 date_default_timezone_set('Asia/Jakarta');
 
 $id = $_SESSION['id'];
@@ -10,11 +11,13 @@ $hari_ini = date('Y-m-d');
 $waktu_sekarang = date('H:i:s');
 $jam_menit_sekarang = date('H:i');
 
+// Ambil Jam Kerja Dinamis yang Telah Ditentukan Admin (mendukung rentang tanggal maupun default reguler)
 $jk_aktif = ambil_jam_kerja($hari_ini);
 $jam_masuk_buka  = $jk_aktif['jam_masuk_buka'];  // Jam mulai presensi
 $jam_masuk_tepat = $jk_aktif['jam_masuk_tepat']; // Batas jam reguler tepat waktu
 $jam_pulang_buka = $jk_aktif['jam_pulang_buka']; // Jam pulang kerja kantor
 
+// Jalankan otomatisasi penentuan Alfa jika karyawan belum absen hingga jam pulang
 sinkron_alfa_otomatis();
 
 // Cek absensi hari ini setelah disinkronisasi
@@ -36,22 +39,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($jam_menit_sekarang >= $jam_pulang_buka) {
       // Lewat jam pulang belum presensi, otomatis dicatat Alfa
       jalankan(
-        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan) VALUES (?, ?, ?, ?, 'Alfa', ?)",
-        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Dinyatakan Alfa: Jam kerja hari ini telah selesai (lewat jam pulang $jam_pulang_buka WIB)")
+        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan, schedule_id) VALUES (?, ?, ?, ?, 'Alfa', ?, ?)",
+        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Dinyatakan Alfa: Jam kerja hari ini telah selesai (lewat jam pulang $jam_pulang_buka WIB)", $jk_aktif['id'])
       );
       pesan("Jam kerja kantor hari ini telah selesai (lewat jam pulang $jam_pulang_buka WIB). Anda dinyatakan Alfa (tidak hadir).", 'gagal');
     } elseif ($jam_menit_sekarang > $jam_masuk_tepat) {
       // Lewat jam reguler (misal lewat 08:30) sampai sebelum jam pulang = Terlambat
       jalankan(
-        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan) VALUES (?, ?, ?, ?, 'Terlambat', ?)",
-        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Terlambat masuk kerja pada pukul $waktu_sekarang WIB (melewati jam reguler $jam_masuk_tepat WIB)")
+        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan, schedule_id) VALUES (?, ?, ?, ?, 'Terlambat', ?, ?)",
+        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Terlambat masuk kerja pada pukul $waktu_sekarang WIB (melewati jam reguler $jam_masuk_tepat WIB)", $jk_aktif['id'])
       );
       pesan("Absen masuk berhasil dicatat. Status: Terlambat (pukul $waktu_sekarang WIB).");
     } else {
       // Jam reguler tepat waktu
       jalankan(
-        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan) VALUES (?, ?, ?, ?, 'Hadir', ?)",
-        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Hadir tepat waktu ($waktu_sekarang WIB)")
+        "INSERT INTO attendances (id, user_id, tanggal, jam_masuk, status, catatan, schedule_id) VALUES (?, ?, ?, ?, 'Hadir', ?, ?)",
+        array(buat_id(), $id, $hari_ini, $waktu_sekarang, "Hadir tepat waktu ($waktu_sekarang WIB)", $jk_aktif['id'])
       );
       pesan("Berhasil absen masuk pada pukul $waktu_sekarang WIB (Hadir tepat waktu).");
     }
@@ -100,8 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         pesan($error_upload, 'gagal');
       } else {
         jalankan(
-          "INSERT INTO attendances (id, user_id, tanggal, status, catatan, bukti) VALUES (?, ?, ?, ?, ?, ?)",
-          array(buat_id(), $id, $hari_ini, $status_pilih, $alasan, $nama_file)
+          "INSERT INTO attendances (id, user_id, tanggal, status, catatan, bukti, schedule_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          array(buat_id(), $id, $hari_ini, $status_pilih, $alasan, $nama_file, $jk_aktif['id'])
         );
         pesan("Pemberitahuan $status_pilih hari ini berhasil disimpan beserta berkas bukti.");
       }
@@ -128,7 +131,7 @@ $riwayat = daftar(
   array($id, $format_periode)
 );
 
-// evaluasi tombol presensi saat ini
+// Evaluasi tombol presensi saat ini
 $terlambat_sekarang = ($jam_menit_sekarang > $jam_masuk_tepat && $jam_menit_sekarang < $jam_pulang_buka);
 $sudah_lewat_pulang = ($jam_menit_sekarang >= $jam_pulang_buka);
 $boleh_absen_pulang = ($absen_hari_ini && empty($absen_hari_ini['jam_pulang']) && in_array($absen_hari_ini['status'], array('Hadir', 'Terlambat')) && $jam_menit_sekarang >= $jam_pulang_buka);
@@ -137,7 +140,7 @@ top('Absensi Kehadiran');
 ?>
 
 <?php if (!$jk_aktif['ada_jadwal']): ?>
-  <!-- pengumuman: tidak ada jam kerja -->
+  <!-- Pengumuman: tidak ada jam kerja -->
   <div class="notif notif-peringatan mb-5 flex items-start gap-3 text-xs">
     <span class="mt-0.5"><?= ikon('peringatan', 'h-5 w-5') ?></span>
     <div>
@@ -149,7 +152,7 @@ top('Absensi Kehadiran');
 
 <div class="mb-6 grid gap-5 lg:grid-cols-3">
 
-  <!-- kiri: absensi hari ini dan form izin / sakit -->
+  <!-- Kiri: absensi hari ini dan form izin / sakit -->
   <div class="lg:col-span-1">
     <?php kartu_awal('Absensi Hari Ini'); ?>
     <div class="py-2 text-center">
@@ -160,13 +163,12 @@ top('Absensi Kehadiran');
       <?php if (!$jk_aktif['ada_jadwal']): ?>
         <!-- Hari libur -->
         <div class="notif notif-peringatan my-2 text-center text-xs">
-          <span class="mx-auto mb-1 block w-fit"><?= ikon('kalender', 'h-6 w-6') ?></span>
           <p class="font-semibold">Hari Libur / Tidak Ada Jam Kerja</p>
           <p class="mt-1">Tidak ada jadwal presensi yang aktif untuk hari ini.</p>
         </div>
 
       <?php elseif (!$absen_hari_ini): ?>
-        <!-- jadwal jam kerja yang ditetapkan admin -->
+        <!-- Jadwal jam kerja yang ditetapkan admin -->
         <div class="petak mb-3 space-y-1 text-left text-xs">
           <div class="mb-1 flex items-center justify-between gap-2 border-b border-stone-200 pb-1.5">
             <span class="font-semibold text-stone-700"><?= e($jk_aktif['nama']) ?></span>
@@ -238,7 +240,7 @@ top('Absensi Kehadiran');
         </div>
 
       <?php else: ?>
-        <!-- sudah absen masuk (Hadir / Terlambat) -->
+        <!-- Sudah absen masuk (Hadir / Terlambat) -->
         <div class="petak mb-3 text-left text-sm">
           <div class="flex justify-between border-b border-stone-200 py-1">
             <span class="text-stone-500">Jam masuk:</span>
@@ -301,7 +303,7 @@ top('Absensi Kehadiran');
     <?php endif; ?>
   </div>
 
-  <!-- kanan: rekap bulanan dan riwayat -->
+  <!-- Kanan: rekap bulanan dan riwayat -->
   <div class="space-y-5 lg:col-span-2">
 
     <div class="kartu">
@@ -323,15 +325,15 @@ top('Absensi Kehadiran');
       </div>
 
       <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <?php kartu_angka('Tepat Waktu', $total_hadir, 'text-ok-700', 'petak text-center'); ?>
-        <?php kartu_angka('Terlambat', $total_terlambat, 'text-warn-700', 'petak text-center'); ?>
-        <?php kartu_angka('Izin', $total_izin, 'text-info-700', 'petak text-center'); ?>
-        <?php kartu_angka('Sakit', $total_sakit, 'text-slate-700', 'petak text-center'); ?>
-        <?php kartu_angka('Alfa', $total_alfa, 'text-danger-700', 'petak text-center'); ?>
+        <?php kartu_angka('Tepat Waktu', $total_hadir, 'text-black', 'petak text-center'); ?>
+        <?php kartu_angka('Terlambat', $total_terlambat, 'text-black', 'petak text-center'); ?>
+        <?php kartu_angka('Izin', $total_izin, 'text-black', 'petak text-center'); ?>
+        <?php kartu_angka('Sakit', $total_sakit, 'text-black', 'petak text-center'); ?>
+        <?php kartu_angka('Alfa', $total_alfa, 'text-black', 'petak text-center'); ?>
       </div>
     </div>
 
-    <!-- riwayat -->
+    <!-- Riwayat -->
     <?php kartu_awal('Riwayat Kehadiran Bulan Ini'); ?>
 
     <?php if (count($riwayat) === 0): ?>
