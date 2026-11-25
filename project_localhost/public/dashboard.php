@@ -14,7 +14,6 @@ $waktu_sekarang = date('H:i:s');
 if ($admin) {
   // Data Portal Admin
   $total_karyawan = angka("SELECT COUNT(*) FROM users WHERE role='karyawan'");
-  $total_dept = angka("SELECT COUNT(*) FROM departments");
   $hadir_hari_ini = angka("SELECT COUNT(*) FROM attendances WHERE tanggal=? AND status IN ('Hadir','Terlambat')", array($hari_ini));
   $cuti_menunggu = angka("SELECT COUNT(*) FROM leave_requests WHERE status='Menunggu'");
   $surat_menunggu = angka("SELECT COUNT(*) FROM letter_requests WHERE status IN ('Menunggu','Diproses')");
@@ -22,7 +21,6 @@ if ($admin) {
 
   $ringkasan = array(
     array('Total Karyawan', $total_karyawan, 'admin_karyawan.php'),
-    array('Departemen', $total_dept, 'admin_departemen.php'),
     array('Hadir Hari Ini', $hadir_hari_ini, 'admin_absensi.php'),
     array('Cuti Perlu Disetujui', $cuti_menunggu, 'admin_cuti.php'),
     array('Surat Perlu Diproses', $surat_menunggu, 'admin_pengajuan.php'),
@@ -34,16 +32,17 @@ if ($admin) {
     SELECT l.*, u.nama, u.nip 
     FROM leave_requests l 
     JOIN users u ON u.id = l.user_id 
-    WHERE l.status='Menunggu' 
+    WHERE l.status = 'Menunggu' 
     ORDER BY l.created_at DESC 
     LIMIT 5
   ");
 
-  // Permintaan surat terbaru
+  // Pengajuan surat terbaru menunggu tindakan
   $surat_terbaru = daftar("
-    SELECT l.id, l.jenis, l.status, l.created_at, u.nama 
+    SELECT l.*, u.nama, u.nip 
     FROM letter_requests l 
     JOIN users u ON u.id = l.user_id 
+    WHERE l.status IN ('Menunggu','Diproses') 
     ORDER BY l.created_at DESC 
     LIMIT 5
   ");
@@ -76,80 +75,68 @@ if ($admin) {
 top('Selamat Datang, ' . $_SESSION['nama']);
 ?>
 
-<!-- Ringkasan angka dan status -->
-<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 <?= $admin ? 'xl:grid-cols-6' : 'xl:grid-cols-4' ?>">
+<!-- Ringkasan Angka / Status -->
+<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 <?= $admin ? 'xl:grid-cols-5' : 'xl:grid-cols-3' ?>">
   <?php foreach ($ringkasan as $r): ?>
-    <?php kartu_angka($r[0], $r[1], 'text-stone-900', 'kartu', $r[2]); ?>
+    <a href="<?= $r[2] ?>" class="kartu block transition-all hover:border-teal-400 hover:shadow-sm">
+      <p class="text-xs text-stone-500"><?= e($r[0]) ?></p>
+      <p class="mt-1 text-2xl font-bold text-stone-900"><?= e($r[1]) ?></p>
+    </a>
   <?php endforeach; ?>
 </div>
 
-<?php if (!$admin && !$absen_hari_ini): ?>
-  <!-- Pengingat absensi masuk untuk karyawan -->
-  <div class="notif notif-netral mb-6 flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <h3 class="text-sm font-semibold text-stone-900">Anda belum melakukan absensi masuk hari ini</h3>
-      <p class="keterangan mt-0.5">Tanggal hari ini: <?= tgl($hari_ini) ?>. Catat kehadiran Anda untuk memulai jam kerja.</p>
-    </div>
-    <a href="absensi.php" class="btn btn-utama btn-kecil">Buka halaman absensi</a>
-  </div>
-<?php endif; ?>
-
 <div class="grid gap-6 lg:grid-cols-2">
-
-  <!-- Kiri: permohonan cuti -->
+  <!-- Cuti Menunggu / Riwayat Cuti -->
   <div>
-    <?php kartu_awal($admin ? 'Permohonan Cuti Perlu Disetujui' : 'Pengajuan Cuti Terkini'); ?>
-
+    <?php kartu_awal($admin ? 'Permohonan Cuti Menunggu Tindakan' : 'Riwayat Pengajuan Cuti Terbaru'); ?>
     <?php if (count($cuti_terbaru) === 0): ?>
-      <?php kosong($admin ? 'Tidak ada permohonan cuti yang menunggu persetujuan.' : 'Belum ada pengajuan cuti.'); ?>
+      <?php kosong($admin ? 'Tidak ada permohonan cuti yang perlu ditinjau.' : 'Belum ada riwayat pengajuan cuti.'); ?>
     <?php else: ?>
-      <?php tabel_awal(array($admin ? 'Karyawan' : 'Jenis Cuti', 'Durasi', 'Status', '')); ?>
-      <?php foreach ($cuti_terbaru as $c): ?>
-        <tr>
-          <td data-label="<?= $admin ? 'Karyawan' : 'Jenis Cuti' ?>">
-            <?php if ($admin): ?>
-              <span class="font-medium text-stone-800"><?= e($c['nama']) ?></span>
-              <br><span class="keterangan"><?= e($c['jenis_cuti']) ?></span>
-            <?php else: ?>
-              <span class="font-medium text-stone-800"><?= e($c['jenis_cuti']) ?></span>
-              <br><span class="keterangan"><?= tgl($c['created_at']) ?></span>
-            <?php endif; ?>
-          </td>
-          <td data-label="Durasi" class="text-xs font-medium text-stone-700"><?= (int)$c['jumlah_hari'] ?> Hari</td>
-          <td data-label="Status"><?= lencana($c['status']) ?></td>
-          <td data-label="" class="text-right">
-            <a href="<?= $admin ? 'admin_cuti.php' : 'cuti.php' ?>" class="btn btn-garis btn-kecil">Detail</a>
-          </td>
-        </tr>
-      <?php endforeach; ?>
-      <?php tabel_akhir(); ?>
+      <div class="divide-y divide-stone-100">
+        <?php foreach ($cuti_terbaru as $c): ?>
+          <div class="flex items-center justify-between py-2.5 text-xs">
+            <div>
+              <span class="font-semibold text-stone-900"><?= e($admin ? $c['nama'] : $c['jenis_cuti']) ?></span>
+              <span class="text-stone-400">• <?= tgl($c['tanggal_mulai']) ?> (<?= $c['jumlah_hari'] ?> hari)</span>
+            </div>
+            <div>
+              <?= lencana($c['status']) ?>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <div class="mt-3 text-right">
+        <a href="<?= $admin ? 'admin_cuti.php' : 'cuti.php' ?>" class="text-xs font-semibold text-teal-700 hover:underline">Lihat Semua →</a>
+      </div>
     <?php endif; ?>
-
     <?php kartu_akhir(); ?>
   </div>
 
-  <!-- Kanan: permintaan surat -->
+  <!-- Pengajuan Surat / Dokumen -->
   <div>
-    <?php kartu_awal($admin ? 'Permintaan Surat Keterangan Terbaru' : 'Permintaan Surat Saya'); ?>
-
+    <?php kartu_awal($admin ? 'Pengajuan Surat Menunggu Diproses' : 'Riwayat Pengajuan Surat Terbaru'); ?>
     <?php if (count($surat_terbaru) === 0): ?>
-      <?php kosong('Belum ada permintaan surat.'); ?>
+      <?php kosong($admin ? 'Tidak ada permohonan surat yang perlu diproses.' : 'Belum ada riwayat pengajuan surat.'); ?>
     <?php else: ?>
-      <?php tabel_awal(array('Surat', 'Pemohon', 'Status', 'Tanggal')); ?>
-      <?php foreach ($surat_terbaru as $s): ?>
-        <tr>
-          <td data-label="Surat" class="font-medium text-stone-800"><?= e($s['jenis']) ?></td>
-          <td data-label="Pemohon" class="text-xs text-stone-600"><?= e($s['nama']) ?></td>
-          <td data-label="Status"><?= lencana($s['status']) ?></td>
-          <td data-label="Tanggal" class="text-xs text-stone-500"><?= tgl($s['created_at']) ?></td>
-        </tr>
-      <?php endforeach; ?>
-      <?php tabel_akhir(); ?>
+      <div class="divide-y divide-stone-100">
+        <?php foreach ($surat_terbaru as $s): ?>
+          <div class="flex items-center justify-between py-2.5 text-xs">
+            <div>
+              <span class="font-semibold text-stone-900"><?= e($admin ? $s['nama'] : $s['jenis']) ?></span>
+              <span class="text-stone-400">• <?= tgl($s['created_at']) ?></span>
+            </div>
+            <div>
+              <?= lencana($s['status']) ?>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <div class="mt-3 text-right">
+        <a href="<?= $admin ? 'admin_pengajuan.php' : 'surat.php' ?>" class="text-xs font-semibold text-teal-700 hover:underline">Lihat Semua →</a>
+      </div>
     <?php endif; ?>
-
     <?php kartu_akhir(); ?>
   </div>
-
 </div>
 
 <?php bottom(); ?>

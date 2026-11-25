@@ -26,10 +26,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Filter status
 $status_filter = isset($_GET['status']) ? $_GET['status'] : 'Menunggu';
-$sql = "SELECT l.*, u.nama, u.nip, d.nama AS nama_departemen 
-    FROM leave_requests l
-    JOIN users u ON u.id = l.user_id
-    LEFT JOIN departments d ON d.id = u.departemen_id";
+// Ganti baris query ini:
+$sql = "SELECT l.*, u.nama, u.nip 
+        FROM leave_requests l
+        JOIN users u ON u.id = l.user_id";
 $params = array();
 
 if ($status_filter !== 'Semua') {
@@ -89,9 +89,6 @@ top('Persetujuan Cuti Karyawan');
       <td data-label="Karyawan">
         <span class="font-medium text-stone-900"><?= e($c['nama']) ?></span>
         <br><span class="keterangan">NIP: <?= e($c['nip']) ?></span>
-        <?php if ($c['nama_departemen']): ?>
-          <br><span class="lencana lencana-netral mt-0.5"><?= e($c['nama_departemen']) ?></span>
-        <?php endif; ?>
       </td>
       <td data-label="Jenis & Durasi">
         <span class="text-xs font-medium text-stone-900"><?= e($c['jenis_cuti']) ?></span>

@@ -222,7 +222,6 @@ function top($judul)
     // Navigasi Portal Admin
     $menu = array(
       'dashboard.php' => array('Dashboard Admin', 'dashboard'),
-      'admin_departemen.php' => array('Departemen', 'departemen'),
       'admin_karyawan.php' => array('Data Karyawan', 'karyawan'),
       'admin_absensi.php' => array('Rekap Absensi', 'absensi'),
       'admin_cuti.php' => array('Persetujuan Cuti', 'cuti'),

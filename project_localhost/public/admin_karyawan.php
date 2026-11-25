@@ -5,6 +5,7 @@ wajib_admin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (isi('aksi') === 'hapus') {
+    // Aturan hapus: akun yang sedang dipakai tidak boleh dihapus
     $target = satu("SELECT * FROM users WHERE id=?", array(isi('id')));
     if (!$target) {
       pesan('Akun tidak ditemukan.', 'gagal');
@@ -24,7 +25,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim(isi('email'));
     $no_hp = trim(isi('no_hp'));
     $alamat = trim(isi('alamat'));
-    $departemen_id = isi('departemen_id') ?: null;
     $jabatan = trim(isi('jabatan'));
     $password = isi('password');
     $konfirmasi = isi('konfirmasi');
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($target && $target['id'] === $_SESSION['id']) {
       $role = $target['role'];
-    }
+    } // role akun sendiri tidak bisa diubah
 
     if ($error === '') {
       if ($nip === '' || $nama === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -69,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       pesan($error, 'gagal');
     } elseif ($uid !== '') {
       jalankan(
-        "UPDATE users SET nip=?, nama=?, email=?, no_hp=?, alamat=?, departemen_id=?, jabatan=?, role=? WHERE id=?",
-        array($nip, $nama, $email, $no_hp, $alamat, $departemen_id, $jabatan, $role, $uid)
+        "UPDATE users SET nip=?, nama=?, email=?, no_hp=?, alamat=?, jabatan=?, role=? WHERE id=?",
+        array($nip, $nama, $email, $no_hp, $alamat, $jabatan, $role, $uid)
       );
       if ($password !== '') {
         jalankan("UPDATE users SET password=? WHERE id=?", array(password_hash($password, PASSWORD_DEFAULT), $uid));
@@ -78,8 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       pesan('Data akun diperbarui.');
     } else {
       jalankan(
-        "INSERT INTO users (id, nip, nama, email, no_hp, alamat, departemen_id, jabatan, role, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        array(buat_id(), $nip, $nama, $email, $no_hp, $alamat, $departemen_id, $jabatan, $role, password_hash($password, PASSWORD_DEFAULT))
+        "INSERT INTO users (id, nip, nama, email, no_hp, alamat, jabatan, role, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        array(buat_id(), $nip, $nama, $email, $no_hp, $alamat, $jabatan, $role, password_hash($password, PASSWORD_DEFAULT))
       );
       pesan('Akun ditambahkan.');
     }
@@ -98,26 +98,16 @@ $nilai = array(
   'email' => '',
   'no_hp' => '',
   'alamat' => '',
-  'departemen_id' => '',
   'jabatan' => '',
-  'gaji_pokok' => 0,
   'role' => 'karyawan'
 );
 if ($edit) {
   $nilai = $edit;
 }
 
-// Departemen untuk dropdown
-$depts = daftar("SELECT * FROM departments ORDER BY nama");
-$opsi_dept = array('' => 'Tanpa departemen');
-foreach ($depts as $d) {
-  $opsi_dept[$d['id']] = $d['nama'];
-}
-
 $semua = daftar("
-  SELECT u.*, d.nama AS nama_departemen 
+  SELECT u.* 
   FROM users u
-  LEFT JOIN departments d ON d.id = u.departemen_id
   ORDER BY CASE u.role WHEN 'admin' THEN 0 ELSE 1 END, u.nama
 ");
 
@@ -129,21 +119,16 @@ if (!$edit) {
 top('Data Karyawan');
 ?>
 <div class="grid gap-6 lg:grid-cols-3">
-
-  <!-- Formulir tambah / ubah akun -->
   <div>
     <?php kartu_awal($edit ? 'Ubah Data Akun' : 'Tambah Karyawan / Admin'); ?>
     <form method="POST" data-validasi novalidate>
       <input type="hidden" name="id" value="<?= e($nilai['id']) ?>">
-
       <?php isian('NIP (angka saja)', 'nip', 'text', $nilai['nip'], 'required data-angka inputmode="numeric" autocomplete="off"'); ?>
       <?php isian('Nama Lengkap', 'nama', 'text', $nilai['nama'], 'required'); ?>
       <?php isian('Email Kantor / Pribadi', 'email', 'email', $nilai['email'], 'required'); ?>
       <?php isian('Nomor HP', 'no_hp', 'number', $nilai['no_hp'], 'data-nomor min="0" inputmode="numeric"'); ?>
+      <?php isian('Jabatan / Posisi', 'jabatan', 'text', $nilai['jabatan'], 'placeholder="Contoh: Staff Operasional / Web Developer"'); ?>
 
-      <?php pilih('Departemen', 'departemen_id', $opsi_dept, $nilai['departemen_id']); ?>
-      <?php isian('Jabatan / Posisi', 'jabatan', 'text', $nilai['jabatan'], 'placeholder="Contoh: Staff HR / Web Developer"'); ?>
-      
       <div class="mb-3">
         <label class="label">Alamat</label>
         <textarea name="alamat" rows="2" class="kolom text-sm"><?= e($nilai['alamat']) ?></textarea>
@@ -155,20 +140,15 @@ top('Data Karyawan');
 
       <div class="flex gap-2">
         <button class="btn btn-utama flex-1 sm:flex-none">Simpan</button>
-        <?php if ($edit): ?>
-          <a href="admin_karyawan.php" class="btn btn-garis flex-1 sm:flex-none">Batal</a>
-        <?php endif; ?>
+        <?php if ($edit): ?><a href="admin_karyawan.php" class="btn btn-garis flex-1 sm:flex-none">Batal</a><?php endif; ?>
       </div>
     </form>
     <?php kartu_akhir(); ?>
   </div>
-
-  <!-- Daftar akun -->
   <div class="lg:col-span-2">
     <?php kartu_awal('Daftar Akun Pengguna'); ?>
-    <input id="cari" class="kolom mb-3 text-xs" placeholder="Cari nama, NIP, atau departemen...">
-
-    <?php tabel_awal(array('Karyawan', 'Departemen & Jabatan', 'Peran', 'Aksi'), 'tabel-cari'); ?>
+    <input id="cari" class="kolom mb-3 text-xs" placeholder="Cari nama, NIP, atau jabatan...">
+    <?php tabel_awal(array('Karyawan', 'Jabatan / Posisi', 'Peran', 'Aksi'), 'tabel-cari'); ?>
     <?php foreach ($semua as $r):
       $boleh_hapus = (alasan_tidak_boleh_hapus($r) === '');
     ?>
@@ -176,22 +156,22 @@ top('Data Karyawan');
         <td data-label="Karyawan">
           <div class="flex items-center gap-3">
             <?= avatar($r, 'h-9 w-9', 'text-sm') ?>
-            <div class="text-left">
-              <span class="font-medium text-stone-900"><?= e($r['nama']) ?></span>
-              <span class="keterangan block">NIP: <?= e($r['nip']) ?></span>
-              <span class="keterangan block"><?= e($r['email']) ?></span>
+            <div>
+              <span class="font-semibold text-stone-900"><?= e($r['nama']) ?></span>
+              <br><span class="text-xs text-stone-500">NIP: <?= e($r['nip']) ?> • <?= e($r['email']) ?></span>
             </div>
           </div>
         </td>
-        <td data-label="Departemen & Jabatan" class="text-xs">
-          <span class="font-medium text-stone-800"><?= e($r['nama_departemen'] ?: 'Belum diatur') ?></span>
-          <br><span class="text-stone-500"><?= e($r['jabatan'] ?: 'Staf') ?></span>
+        <td data-label="Jabatan / Posisi" class="text-xs">
+          <span class="font-medium text-stone-800"><?= e($r['jabatan'] ?: 'Staf') ?></span>
         </td>
         <td data-label="Peran">
-          <span class="lencana <?= $r['role'] === 'admin' ? 'lencana-info' : 'lencana-netral' ?>"><?= e(nama_peran($r['role'])) ?></span>
+          <span class="inline-block rounded px-2 py-0.5 text-xs font-semibold <?= $r['role'] === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-stone-100 text-stone-700' ?>">
+            <?= e(nama_peran($r['role'])) ?>
+          </span>
         </td>
         <td data-label="Aksi" class="whitespace-nowrap">
-          <div class="flex gap-1.5">
+          <div class="flex gap-1">
             <a href="?edit=<?= e($r['id']) ?>" class="btn btn-garis btn-kecil">Ubah</a>
             <?php if ($boleh_hapus): ?>
               <form method="POST" data-konfirmasi="Hapus akun ini beserta seluruh datanya?">
@@ -207,7 +187,5 @@ top('Data Karyawan');
     <?php tabel_akhir(); ?>
     <?php kartu_akhir(); ?>
   </div>
-
 </div>
-
 <?php bottom(); ?>
