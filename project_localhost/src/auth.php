@@ -1,7 +1,5 @@
 <?php
-// Di-include paling atas setiap halaman (session_start harus di baris awal)
 session_start();
-// Sinkronisasi zona waktu resmi ke WIB (Waktu Indonesia Barat / UTC+7)
 date_default_timezone_set('Asia/Jakarta');
 
 include_once __DIR__ . "/koneksi.php";

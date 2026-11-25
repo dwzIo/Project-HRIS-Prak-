@@ -9,19 +9,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $id = isi('id');
 
   if ($aksi === 'data') {
-    // Cari data pengajuan yang diklik admin
+    // cari data pengajuan yang diklik admin
     $c = satu("SELECT * FROM change_requests WHERE id=? AND status='Menunggu'", array($id));
     if ($c) {
       $status = (isi('keputusan') === 'Disetujui') ? 'Disetujui' : 'Ditolak';
       $catatan = trim(isi('catatan'));
 
-      // Ambil SEMUA data perubahan milik karyawan ini yang diajukan di waktu (created_at) yang sama
+      // ambil SEMUA data perubahan milik karyawan ini yang diajukan di waktu (created_at) yang sama
       $semua_perubahan = daftar(
         "SELECT * FROM change_requests WHERE user_id=? AND created_at=? AND status='Menunggu'",
         array($c['user_id'], $c['created_at'])
       );
 
-      // Jika disetujui, update semua data baru ke tabel users
+      // jika disetujui, update semua data baru ke tabel users
       if ($status === 'Disetujui') {
         foreach ($semua_perubahan as $item) {
           if (isset($boleh[$item['field']])) {
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       }
 
-      // Update status semua baris dalam pengajuan tersebut
+      // update status semua baris dalam pengajuan tersebut
       jalankan(
         "UPDATE change_requests SET status=?, catatan=? WHERE user_id=? AND created_at=? AND status='Menunggu'",
         array($status, $catatan, $c['user_id'], $c['created_at'])
@@ -90,7 +90,7 @@ $resets = daftar("SELECT r.*, u.nip, u.nama FROM password_resets r JOIN users u 
 top('Pengajuan karyawan');
 ?>
 
-<!-- Permintaan reset password -->
+<!-- permintaan reset password -->
 <?php kartu_awal('Permintaan reset password'); ?>
 <p class="keterangan -mt-2 mb-4 text-sm">Karyawan baru bisa mengganti passwordnya setelah permintaan disetujui di sini.</p>
 
@@ -130,7 +130,7 @@ top('Pengajuan karyawan');
 <?php kartu_akhir(); ?>
 
 
-<!-- Perubahan data pribadi -->
+<!-- perubahan data pribadi -->
 <?php kartu_awal('Perubahan data pribadi'); ?>
 
 <?php if (count($perubahan) == 0): ?>
@@ -179,7 +179,7 @@ top('Pengajuan karyawan');
 <?php kartu_akhir(); ?>
 
 
-<!-- Permintaan surat -->
+<!-- permintaan surat -->
 <?php kartu_awal('Permintaan surat'); ?>
 
 <?php if (count($surat) == 0): ?>
@@ -212,7 +212,7 @@ top('Pengajuan karyawan');
 <?php kartu_akhir(); ?>
 
 
-<!-- Verifikasi dokumen -->
+<!-- verifikasi dokumen -->
 <?php kartu_awal('Verifikasi dokumen'); ?>
 
 <?php if (count($dokumen) == 0): ?>
@@ -248,7 +248,7 @@ top('Pengajuan karyawan');
 <?php kartu_akhir(); ?>
 
 
-<!-- Jendela pratinjau berkas (dikendalikan assets/app.js) -->
+<!-- jendela pratinjau berkas -->
 <div id="modal-preview" class="fixed inset-0 z-50 hidden items-center justify-center bg-stone-900/60 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-judul">
   <div class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-stone-200 bg-white">
 

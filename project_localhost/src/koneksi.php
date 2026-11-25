@@ -1,6 +1,5 @@
 <?php
 // Koneksi SQLite lewat PDO. Database = file database/hr.sqlite
-// (sudah disertakan; dibuat otomatis dari schema.sql jika hilang).
 $file = __DIR__ . "/../database/hr.sqlite";
 $baru = !file_exists($file);
 $konek = new PDO("sqlite:" . $file);

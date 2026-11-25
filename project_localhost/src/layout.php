@@ -322,7 +322,7 @@ function top($judul)
 
 <body class="min-h-screen bg-stone-50 text-stone-800 md:flex print:bg-white">
 
-  <!-- Bilah atas (hanya di HP) -->
+  <!-- bilah atas (cuma di HP) -->
   <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 md:hidden print:hidden">
     <button type="button" id="buka-menu" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false" class="-ml-2 rounded-md p-2 text-stone-600 transition-colors hover:bg-stone-100"><?= ikon('menu') ?></button>
     <div class="flex items-center gap-2">
@@ -332,7 +332,7 @@ function top($judul)
     <div class="ml-auto"><?= avatar($u, 'h-8 w-8', 'text-sm') ?></div>
   </header>
 
-  <!-- Lapisan gelap di belakang laci menu (HP) -->
+  <!-- lapisan gelap di belakang laci menu (HP) -->
   <div id="lapisan-menu" class="pointer-events-none fixed inset-0 z-40 bg-stone-900/50 opacity-0 transition-opacity duration-300 md:hidden print:hidden"></div>
 
   <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col gap-4 bg-stone-900 p-3 text-stone-300 transition-[transform,width] duration-300 ease-out motion-reduce:transition-none md:sticky md:inset-y-auto md:top-0 md:z-auto md:h-screen md:translate-x-0 md:shrink-0 md:overflow-hidden md:group-data-[sidebar=tutup]:w-[4.5rem] print:hidden">

@@ -3,7 +3,6 @@ include __DIR__ . "/../src/auth.php";
 include __DIR__ . "/../src/layout.php";
 wajib_karyawan();
 
-// Pastikan sinkron ke WIB (Asia/Jakarta)
 date_default_timezone_set('Asia/Jakarta');
 
 $id = $_SESSION['id'];
@@ -11,13 +10,11 @@ $hari_ini = date('Y-m-d');
 $waktu_sekarang = date('H:i:s');
 $jam_menit_sekarang = date('H:i');
 
-// Ambil Jam Kerja Dinamis yang Telah Ditentukan Admin (mendukung rentang tanggal maupun default reguler)
 $jk_aktif = ambil_jam_kerja($hari_ini);
 $jam_masuk_buka  = $jk_aktif['jam_masuk_buka'];  // Jam mulai presensi
 $jam_masuk_tepat = $jk_aktif['jam_masuk_tepat']; // Batas jam reguler tepat waktu
 $jam_pulang_buka = $jk_aktif['jam_pulang_buka']; // Jam pulang kerja kantor
 
-// Jalankan otomatisasi penentuan Alfa jika karyawan belum absen hingga jam pulang
 sinkron_alfa_otomatis();
 
 // Cek absensi hari ini setelah disinkronisasi
@@ -131,7 +128,7 @@ $riwayat = daftar(
   array($id, $format_periode)
 );
 
-// Evaluasi tombol presensi saat ini
+// evaluasi tombol presensi saat ini
 $terlambat_sekarang = ($jam_menit_sekarang > $jam_masuk_tepat && $jam_menit_sekarang < $jam_pulang_buka);
 $sudah_lewat_pulang = ($jam_menit_sekarang >= $jam_pulang_buka);
 $boleh_absen_pulang = ($absen_hari_ini && empty($absen_hari_ini['jam_pulang']) && in_array($absen_hari_ini['status'], array('Hadir', 'Terlambat')) && $jam_menit_sekarang >= $jam_pulang_buka);
@@ -140,7 +137,7 @@ top('Absensi Kehadiran');
 ?>
 
 <?php if (!$jk_aktif['ada_jadwal']): ?>
-  <!-- Pengumuman: tidak ada jam kerja -->
+  <!-- pengumuman: tidak ada jam kerja -->
   <div class="notif notif-peringatan mb-5 flex items-start gap-3 text-xs">
     <span class="mt-0.5"><?= ikon('peringatan', 'h-5 w-5') ?></span>
     <div>
@@ -152,7 +149,7 @@ top('Absensi Kehadiran');
 
 <div class="mb-6 grid gap-5 lg:grid-cols-3">
 
-  <!-- Kiri: absensi hari ini dan form izin / sakit -->
+  <!-- kiri: absensi hari ini dan form izin / sakit -->
   <div class="lg:col-span-1">
     <?php kartu_awal('Absensi Hari Ini'); ?>
     <div class="py-2 text-center">
@@ -169,7 +166,7 @@ top('Absensi Kehadiran');
         </div>
 
       <?php elseif (!$absen_hari_ini): ?>
-        <!-- Jadwal jam kerja yang ditetapkan admin -->
+        <!-- jadwal jam kerja yang ditetapkan admin -->
         <div class="petak mb-3 space-y-1 text-left text-xs">
           <div class="mb-1 flex items-center justify-between gap-2 border-b border-stone-200 pb-1.5">
             <span class="font-semibold text-stone-700"><?= e($jk_aktif['nama']) ?></span>
@@ -241,7 +238,7 @@ top('Absensi Kehadiran');
         </div>
 
       <?php else: ?>
-        <!-- Sudah absen masuk (Hadir / Terlambat) -->
+        <!-- sudah absen masuk (Hadir / Terlambat) -->
         <div class="petak mb-3 text-left text-sm">
           <div class="flex justify-between border-b border-stone-200 py-1">
             <span class="text-stone-500">Jam masuk:</span>
@@ -304,7 +301,7 @@ top('Absensi Kehadiran');
     <?php endif; ?>
   </div>
 
-  <!-- Kanan: rekap bulanan dan riwayat -->
+  <!-- kanan: rekap bulanan dan riwayat -->
   <div class="space-y-5 lg:col-span-2">
 
     <div class="kartu">
@@ -334,7 +331,7 @@ top('Absensi Kehadiran');
       </div>
     </div>
 
-    <!-- Riwayat -->
+    <!-- riwayat -->
     <?php kartu_awal('Riwayat Kehadiran Bulan Ini'); ?>
 
     <?php if (count($riwayat) === 0): ?>
