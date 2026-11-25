@@ -56,9 +56,6 @@ if ($admin) {
   $cuti_terpakai = angka("SELECT COALESCE(SUM(jumlah_hari),0) FROM leave_requests WHERE user_id=? AND status='Disetujui' AND jenis_cuti='Cuti Tahunan' AND strftime('%Y', tanggal_mulai)=?", array($id, $tahun_ini));
   $sisa_cuti = max(0, 12 - $cuti_terpakai);
 
-  // Slip gaji terakhir
-  $slip_terakhir = satu("SELECT * FROM payrolls WHERE user_id=? AND status IN ('Diterbitkan','Dibayar') ORDER BY periode_tahun DESC, periode_bulan DESC LIMIT 1", array($id));
-
   // Pengajuan dalam proses
   $pengajuan_cuti_menunggu = angka("SELECT COUNT(*) FROM leave_requests WHERE user_id=? AND status='Menunggu'", array($id));
   $pengajuan_surat_menunggu = angka("SELECT COUNT(*) FROM letter_requests WHERE user_id=? AND status IN ('Menunggu','Diproses')", array($id));
@@ -68,7 +65,6 @@ if ($admin) {
   $ringkasan = array(
     array('Status Absensi Hari Ini', $absen_hari_ini ? $absen_hari_ini['status'] : 'Belum Absen', 'absensi.php'),
     array('Sisa Cuti Tahunan', $sisa_cuti . ' Hari', 'cuti.php'),
-    array('Slip Gaji Terakhir', $slip_terakhir ? rupiah($slip_terakhir['total_gaji']) : 'Belum Terbit', 'slip_gaji.php'),
     array('Pengajuan Menunggu', $total_pengajuan_menunggu, 'surat.php')
   );
 

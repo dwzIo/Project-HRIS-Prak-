@@ -26,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $alamat = trim(isi('alamat'));
     $departemen_id = isi('departemen_id') ?: null;
     $jabatan = trim(isi('jabatan'));
-    $gaji_pokok = max(0, (int)isi('gaji_pokok'));
     $password = isi('password');
     $konfirmasi = isi('konfirmasi');
     $role = 'karyawan';
@@ -70,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       pesan($error, 'gagal');
     } elseif ($uid !== '') {
       jalankan(
-        "UPDATE users SET nip=?, nama=?, email=?, no_hp=?, alamat=?, departemen_id=?, jabatan=?, gaji_pokok=?, role=? WHERE id=?",
-        array($nip, $nama, $email, $no_hp, $alamat, $departemen_id, $jabatan, $gaji_pokok, $role, $uid)
+        "UPDATE users SET nip=?, nama=?, email=?, no_hp=?, alamat=?, departemen_id=?, jabatan=?, role=? WHERE id=?",
+        array($nip, $nama, $email, $no_hp, $alamat, $departemen_id, $jabatan, $role, $uid)
       );
       if ($password !== '') {
         jalankan("UPDATE users SET password=? WHERE id=?", array(password_hash($password, PASSWORD_DEFAULT), $uid));
@@ -79,8 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       pesan('Data akun diperbarui.');
     } else {
       jalankan(
-        "INSERT INTO users (id, nip, nama, email, no_hp, alamat, departemen_id, jabatan, gaji_pokok, role, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        array(buat_id(), $nip, $nama, $email, $no_hp, $alamat, $departemen_id, $jabatan, $gaji_pokok, $role, password_hash($password, PASSWORD_DEFAULT))
+        "INSERT INTO users (id, nip, nama, email, no_hp, alamat, departemen_id, jabatan, role, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        array(buat_id(), $nip, $nama, $email, $no_hp, $alamat, $departemen_id, $jabatan, $role, password_hash($password, PASSWORD_DEFAULT))
       );
       pesan('Akun ditambahkan.');
     }
@@ -144,8 +143,7 @@ top('Data Karyawan');
 
       <?php pilih('Departemen', 'departemen_id', $opsi_dept, $nilai['departemen_id']); ?>
       <?php isian('Jabatan / Posisi', 'jabatan', 'text', $nilai['jabatan'], 'placeholder="Contoh: Staff HR / Web Developer"'); ?>
-      <?php isian('Gaji Pokok Standar (Rp)', 'gaji_pokok', 'number', $nilai['gaji_pokok'], 'min="0" placeholder="Contoh: 5000000"'); ?>
-
+      
       <div class="mb-3">
         <label class="label">Alamat</label>
         <textarea name="alamat" rows="2" class="kolom text-sm"><?= e($nilai['alamat']) ?></textarea>
